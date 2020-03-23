@@ -1,10 +1,9 @@
 #version 330
 
-in vec3 vertColor;
-
 out vec4 color;
+uniform vec4 uniformColor;
 
 void main()
 {
-	color = vec4(vertColor, 1.0f);
+	color = uniformColor;
 }

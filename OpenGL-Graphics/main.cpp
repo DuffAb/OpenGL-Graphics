@@ -57,11 +57,11 @@ int main()
 
 	// Set up vertex data (and buffer(s)) and attribute pointers. 指定顶点属性数据，顶点位置
 	GLfloat vertices[] = {
-		//顶点位置           //顶点颜色
-		-0.5f,  0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // 0
-		 0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, // 1
-		 0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // 2
-		 0.0f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f  // 3
+		//顶点位置 
+		-0.5f,  0.0f, 0.0f,// 0
+		 0.5f,  0.0f, 0.0f,// 1
+		 0.0f,  0.5f, 0.0f,// 2
+		 0.0f, -0.5f, 0.0f,// 3
 	};
 
 	// 索引数据
@@ -93,12 +93,9 @@ int main()
 	
 	// 6.指定解析方式，并启用顶点属性
 	// 顶点位置属性
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// 顶点颜色属性
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-	
+		
 	// 解除绑定，防止后续操作干扰到了当前VAO和VBO
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
@@ -106,6 +103,10 @@ int main()
 
 	//第二部分：准备着色器程序
 	Shader shader("shader/triangle.vertex", "shader/triangle.frag");
+
+	// Uncommenting this call will result in wireframe polygons.
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -120,6 +121,12 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
 		shader.use();
+
+		// Update the uniform color
+		GLfloat timeValue = glfwGetTime();
+		GLfloat greenValue = (sin(timeValue) / 2) + 0.5; //sin(timeValue) 返回值在 [-1 , 1]
+		shader.updateUniform4f("uniformColor", 0.0f, greenValue, 0.0f, 1.0f);
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
 		glBindVertexArray(0);

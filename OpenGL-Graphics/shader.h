@@ -42,11 +42,12 @@ public:
 			glDeleteProgram(this->programId);
 		}
 	}
-
-	GLint GetUniformLocation(const GLchar* name)
+	void updateUniform4f(const GLchar* name, GLfloat f0, GLfloat f1, GLfloat f2, GLfloat f3)
 	{
-		return glGetUniformLocation(programId, name);
+		GLint location = glGetUniformLocation(programId, name);
+		glUniform4f(location, f0, f1, f2, f3);
 	}
+	
 
 	
 protected:
