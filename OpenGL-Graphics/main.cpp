@@ -57,18 +57,21 @@ int main()
 
 	// Set up vertex data (and buffer(s)) and attribute pointers. 指定顶点属性数据，顶点位置
 	GLfloat vertices[] = {
-		//左边大三角形       顶点颜色
-		-0.7f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,// Left  
-		 0.3f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,// Right 
-		-0.2f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,// Top   
-		//右边小三角形       顶点颜色
-		 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,// Left
-		 1.0f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,// Right
-		 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f // Top  
+		//顶点位置           //顶点颜色
+		-0.5f,  0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // 0
+		 0.5f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, // 1
+		 0.0f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // 2
+		 0.0f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f  // 3
+	};
+
+	// 索引数据
+	GLshort indices[] = {
+		0, 1, 2,  // 第一个三角形
+		0, 3, 1   // 第二个三角形
 	};
 
 	// 第一部分：创建缓存对象
-	GLuint VAOId, VBOId;
+	GLuint VAOId, VBOId, EBOId;
 	// 1.创建并绑定VAO对象
 	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
 	glGenVertexArrays(1, &VAOId);
@@ -78,10 +81,17 @@ int main()
 	glGenBuffers(1, &VBOId);
 	glBindBuffer(GL_ARRAY_BUFFER, VBOId);
 
-	// 3.分配空间，传送数据
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// 3.创建并绑定EBO对象
+	glGenBuffers(1, &EBOId);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBOId);
 
-	// 4.指定解析方式，并启用顶点属性
+	// 4.分配空间，传送顶点数据
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	
+	// 5.分配空间，传送索引数据
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	
+	// 6.指定解析方式，并启用顶点属性
 	// 顶点位置属性
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
@@ -110,7 +120,7 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
 		shader.use();
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
