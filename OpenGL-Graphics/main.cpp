@@ -6,6 +6,10 @@
 #include "common.h"
 #include "glfwcallback.h"
 
+// 包含着色器加载库
+#include "shader.h"
+
+
 // Window dimensions
 const GLuint WIDTH = 960;
 const GLuint HEIGHT = 540;
@@ -87,67 +91,7 @@ int main()
 
 
 	//第二部分：准备着色器程序
-	// 1.准备着色器源代码
-	const GLchar* vertexShaderSource = "#version 330\n"
-		"layout(location = 0) in vec3 position;\n"
-		"void main()\n"
-		"{\n"
-			"gl_Position = vec4(position, 1.0);\n"
-		"}\0";
-	const GLchar* fragShaderSource = "#version 330\n"
-		"out vec4 color;\n"
-		"void main()\n"
-		"{\n color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n}";
-	
-	// 2. 创建Shader object
-	// 顶点着色器
-	GLuint vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShaderId, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShaderId);
-	GLint compileStatus = 0;
-	glGetShaderiv(vertexShaderId, GL_COMPILE_STATUS, &compileStatus); // 检查编译状态
-	if (compileStatus == GL_FALSE) // 获取错误报告
-	{
-		GLint maxLength = 0;
-		glGetShaderiv(vertexShaderId, GL_INFO_LOG_LENGTH, &maxLength);
-		std::vector<GLchar> errLog(maxLength);
-		glGetShaderInfoLog(vertexShaderId, maxLength, &maxLength, &errLog[0]);
-		std::cout << "Error::shader vertex shader compile failed," << &errLog[0] << std::endl;
-	}
-	// 片元着色器
-	GLuint fragShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragShaderId, 1, &fragShaderSource, NULL);
-	glCompileShader(fragShaderId);
-	glGetShaderiv(fragShaderId, GL_COMPILE_STATUS, &compileStatus);
-	if (compileStatus == GL_FALSE)
-	{
-		GLint maxLength = 0;
-		glGetShaderiv(fragShaderId, GL_INFO_LOG_LENGTH, &maxLength);
-		std::vector<GLchar> errLog(maxLength);
-		glGetShaderInfoLog(fragShaderId, maxLength, &maxLength, &errLog[0]);
-		std::cout << "Error::shader fragment shader compile failed," << &errLog[0] << std::endl;
-	}
-	// 3.链接形成 shader program object
-	GLuint shaderProgramId = glCreateProgram();
-	glAttachShader(shaderProgramId, vertexShaderId);
-	glAttachShader(shaderProgramId, fragShaderId);
-	glLinkProgram(shaderProgramId);
-	GLint linkStatus;
-	glGetProgramiv(shaderProgramId, GL_LINK_STATUS, &linkStatus);
-	if (linkStatus == GL_FALSE)
-	{
-		GLint maxLength = 0;
-		glGetProgramiv(shaderProgramId, GL_INFO_LOG_LENGTH, &maxLength);
-		std::vector<GLchar> errLog(maxLength);
-		glGetProgramInfoLog(shaderProgramId, maxLength, &maxLength, &errLog[0]);
-		std::cout << "Error::shader link failed," << &errLog[0] << std::endl;
-	}
-	// 链接完成后detach
-	glDetachShader(shaderProgramId, vertexShaderId);
-	glDetachShader(shaderProgramId, fragShaderId);
-	// 不需要连接到其他程序时，释放空间
-	glDeleteShader(vertexShaderId);
-	glDeleteShader(fragShaderId);
+	Shader shader("shader/triangle.vertex", "shader/triangle.frag");
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -161,7 +105,7 @@ int main()
 
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
-		glUseProgram(shaderProgramId);
+		shader.use();
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindVertexArray(0);
@@ -172,7 +116,6 @@ int main()
 	}
 
 	// 释放资源
-	glDeleteProgram(shaderProgramId);
 	glDeleteVertexArrays(1, &VAOId);
 	glDeleteBuffers(1, &VBOId);
 
