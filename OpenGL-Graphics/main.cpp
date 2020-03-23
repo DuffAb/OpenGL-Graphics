@@ -28,7 +28,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "glTriangleVertex", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "glTriangleVertexShader", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -57,14 +57,14 @@ int main()
 
 	// Set up vertex data (and buffer(s)) and attribute pointers. 指定顶点属性数据，顶点位置
 	GLfloat vertices[] = {
-		//左边大三角形
-		-0.7f, -0.5f, 0.0f, // Left  
-		 0.3f, -0.5f, 0.0f, // Right 
-		-0.2f,  0.5f, 0.0f, // Top   
-		 //右边小三角形 
-		 0.5f, -0.5f, 0.0f, // Left
-		 1.0f, -0.5f, 0.0f, // Right
-		0.75f,  0.0f, 0.0f  // Top  
+		//左边大三角形       顶点颜色
+		-0.7f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,// Left  
+		 0.3f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,// Right 
+		-0.2f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,// Top   
+		//右边小三角形       顶点颜色
+		 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,// Left
+		 1.0f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,// Right
+		 0.75f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f // Top  
 	};
 
 	// 第一部分：创建缓存对象
@@ -82,9 +82,13 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	// 4.指定解析方式，并启用顶点属性
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+	// 顶点位置属性
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-
+	// 顶点颜色属性
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	
 	// 解除绑定，防止后续操作干扰到了当前VAO和VBO
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
