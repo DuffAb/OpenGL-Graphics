@@ -4,6 +4,7 @@
 #include "common.h"
 
 bool keys[1024];
+GLfloat mixValue = 0.4f; // 纹理混合参数
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -25,6 +26,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			keys[key] = true;
 		else if (action == GLFW_RELEASE)
 			keys[key] = false;
+	}
+}
+
+void key_callback_mix(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, GL_TRUE); // 关闭窗口
+	}
+	else if (key == GLFW_KEY_S && action == GLFW_PRESS)
+	{
+		mixValue += 0.05f;
+		if (mixValue > 1.0f)
+			mixValue = 1.0f;
+	}
+	else if (key == GLFW_KEY_A && action == GLFW_PRESS)
+	{
+		mixValue -= 0.05f;
+		if (mixValue < 0.0f)
+			mixValue = 0.0f;
 	}
 }
 

@@ -8,12 +8,14 @@
 
 // 包含着色器加载库
 #include "shader.h"
+// 包含纹理加载辅助类
 #include "texture.h"
 
 
 // Window dimensions
 const GLuint WIDTH = 960;
 const GLuint HEIGHT = 540;
+
 
 int main()
 {
@@ -33,7 +35,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "gl2DTexture", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of mixing 2D texture(press A and S to adjust)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -44,7 +46,7 @@ int main()
 	glfwMakeContextCurrent(window);
 	
 	// Set the required callback functions
-	glfwSetKeyCallback(window, key_callback);
+	glfwSetKeyCallback(window, key_callback_mix);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	// 让glew获取所有拓展函数
@@ -118,14 +120,15 @@ int main()
 
 
 	//第二部分：准备着色器程序
-	Shader shader("shader/04-gltexture-v2.0.vertex", "shader/04-gltexture-v2.0.frag");
+	Shader shader("shader/04-gltexture-v3.0.vertex", "shader/04-gltexture-v3.0.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
 
 	// Section3 准备纹理对象
-	GLuint textureId = TextureHelper::load2DTexture("resources/textures/wall.jpg");
+	GLuint textureId1 = TextureHelper::load2DTexture("resources/textures/wood.png");
+	GLuint textureId2 = TextureHelper::load2DTexture("resources/textures/cat.png");
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -139,10 +142,16 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
 		shader.use();
-		// 启用纹理单元 绑定纹理对象
+		// 启用多个纹理单元 绑定纹理对象
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureId);
-		shader.updateUniform1i("tex", 0);// 设置纹理单元为0号
+		glBindTexture(GL_TEXTURE_2D, textureId1);
+		shader.updateUniform1i("tex1", 0);// 设置纹理单元为0号
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textureId2);
+		shader.updateUniform1i("tex2", 1);// 设置纹理单元为1号
+
+		shader.updateUniform1f("mixValue", mixValue);// 设置纹理混合参数
+
 		// 使用索引绘制
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 		glBindVertexArray(0);

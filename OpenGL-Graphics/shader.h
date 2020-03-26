@@ -53,6 +53,12 @@ public:
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform1i(location, i); // 设置纹理单元为i号
 	}
+
+	void updateUniform1f(const GLchar* name, GLfloat i)
+	{
+		GLint location = glGetUniformLocation(programId, name);
+		glUniform1f(location, i);
+	}
 	
 
 	
