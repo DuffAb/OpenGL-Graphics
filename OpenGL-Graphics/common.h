@@ -12,6 +12,7 @@
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "glfw3.lib")
 #pragma comment(lib, "glew32sd.lib")
+#pragma comment(lib, "SOIL.lib")
 
 #endif // _COMMON_H_
 
