@@ -168,8 +168,8 @@ int main()
 	glBindVertexArray(0);
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/modelTransformation/rotation/rectangle.vertex", "shader/modelTransformation/rotation/rectangle.frag");
-	Shader axisShader("shader/modelTransformation/rotation/axis.vertex", "shader/modelTransformation/rotation/axis.frag");
+	Shader shader("shader/modelTransformation/reflection/rectangle.vertex", "shader/modelTransformation/reflection/rectangle.frag");
+	Shader axisShader("shader/modelTransformation/reflection/axis.vertex", "shader/modelTransformation/reflection/axis.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -206,27 +206,21 @@ int main()
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第二个矩形，第二象限，+z轴，原点旋转90度
+		// 绘制第二个矩形，第二象限，沿着y轴镜像
 		model = glm::mat4();
-		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		model = glm::scale(model, glm::vec3(-1.0f, 1.0f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第三个矩形，第三象限，绕着矩形中心旋转
+		// 绘制第三个矩形，第三象限，关于原点镜像
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-0.5f, -0.5f, 0.0f));
-		model = glm::translate(model, glm::vec3(0.25f, 0.25f, 0.0f));
-		model = glm::rotate(model, (GLfloat)glfwGetTime() * 2.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		model = glm::translate(model, glm::vec3(-0.25f, -0.25f, 0.0f));
+		model = glm::scale(model, glm::vec3(-1.0f, -1.0f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第四个矩形，第四象限，绕着右下角旋转
+		// 绘制第四个矩形，第四象限，关于x轴镜像
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
-		model = glm::translate(model, glm::vec3(0.5f, 0.0f, 0.0f));
-		model = glm::rotate(model, (GLfloat)glfwGetTime() * 2.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-		model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(1.0f, -1.0f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
