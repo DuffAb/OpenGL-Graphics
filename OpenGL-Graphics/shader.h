@@ -59,6 +59,15 @@ public:
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform1f(location, i);
 	}
+
+	void updateUniformMatrix4fv(const GLchar* name, GLsizei count, GLboolean transpose, const GLfloat* value)
+	{
+		GLint location = glGetUniformLocation(programId, name);
+		glUniformMatrix4fv(location,	//uniform的位置
+			count,		//要加载数据的数组元素的数量或者需要修改的矩阵的数量
+			transpose,	//指明矩阵是列优先(column major)矩阵（GL_FALSE）还是行优先(row major)矩阵（GL_TRUE）
+			value);		//指向由count个元素的数组的指针
+	}
 	
 
 	

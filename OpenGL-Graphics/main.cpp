@@ -10,6 +10,8 @@
 #include "shader.h"
 // 包含纹理加载辅助类
 #include "texture.h"
+// 包含数学辅助
+#include "math.h"
 
 
 // Window dimensions
@@ -45,8 +47,8 @@ int main()
 	// 创建的窗口的context指定为当前context
 	glfwMakeContextCurrent(window);
 	
-	// Set the required callback functions
-	glfwSetKeyCallback(window, key_callback_mix);
+	// 注册窗口键盘事件回调函数
+	glfwSetKeyCallback(window, key_callback);
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 	// 让glew获取所有拓展函数
@@ -70,16 +72,38 @@ int main()
 	// Section1 准备顶点数据
 	// 指定顶点属性数据 顶点位置 颜色 纹理
 	GLfloat vertices[] = {
-		-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f,0.0f, 0.0f,  // 0
-		 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,1.0f, 0.0f,  // 1
-		 0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f,1.0f, 1.0f,  // 2
-		-0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f,0.0f, 1.0f   // 3
+		0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // 0
+		0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // 1
+		0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,  // 2
+		0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // 3
 	};
 
 	// 索引数据
 	GLshort indices[] = {
 		0, 1, 2,  // 第一个三角形
 		0, 2, 3   // 第二个三角形
+	};
+
+	// 指定坐标轴三角形箭头属性数据 顶点 颜色
+	GLfloat axisTriangleData[] = {
+		0.945f,    0.03125f,  0.0f,   1.0f, 0.0f, 0.0f, // +x轴三角形
+		1.0f,      0.0f,      0.0f,   1.0f, 0.0f, 0.0f,
+		0.945f,    -0.03125f, 0.0f,   1.0f, 0.0f, 0.0f,
+		-0.03125f, 0.945f,    0.0f,   0.0f, 1.0f, 0.0f,// +y轴三角形
+		0.0f,      1.0f,      0.0f,   0.0f, 1.0f, 0.0f,
+		0.03125f,  0.945f,    0.0f,   0.0f, 1.0f, 0.0f,
+		-0.03125f, 0.0f,      0.945f, 0.0f, 0.0f, 1.0f,// +z轴三角形
+		0.0f,      0.0f,      1.0f,   0.0f, 0.0f, 1.0f,
+		0.03125f,  0.0f,      0.945f, 0.0f, 0.0f, 1.0f,
+	};
+	// 指定坐标轴直线属性数据 顶点 颜色
+	GLfloat axisLineData[] = {
+		-1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+		1.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 1.0f
 	};
 
 	// 创建缓存对象
@@ -118,17 +142,41 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 
+	// 准备坐标轴数据
+	GLuint axisVAOIds[2], axisVBOIds[2];
+	glGenVertexArrays(2, axisVAOIds);
+	glBindVertexArray(axisVAOIds[0]);
+	glGenBuffers(2, axisVBOIds);
+	// 准备坐标轴箭头
+	glBindBuffer(GL_ARRAY_BUFFER, axisVBOIds[0]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(axisTriangleData), axisTriangleData, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	// 准备坐标轴直线
+	glBindVertexArray(axisVAOIds[1]);
+	glBindBuffer(GL_ARRAY_BUFFER, axisVBOIds[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(axisLineData), axisLineData, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
 	//第二部分：准备着色器程序
-	Shader shader("shader/04-gltexture-v3.0.vertex", "shader/04-gltexture-v3.0.frag");
+	Shader shader("shader/modelTransformation/translation/rectangle.vertex", "shader/modelTransformation/translation/rectangle.frag");
+	Shader axisShader("shader/modelTransformation/translation/axis.vertex", "shader/modelTransformation/translation/axis.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
 
 	// Section3 准备纹理对象
-	GLuint textureId1 = TextureHelper::load2DTexture("resources/textures/wood.png");
-	GLuint textureId2 = TextureHelper::load2DTexture("resources/textures/cat.png");
+	GLuint textureId = TextureHelper::load2DTexture("resources/textures/cat.png");
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -142,18 +190,46 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
 		shader.use();
+
+		glm::mat4 projection;	// 投影变换矩阵
+		glm::mat4 view;			// 视变换矩阵
+		glm::mat4 model;		// 模型变换矩阵
+		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		// 启用多个纹理单元 绑定纹理对象
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureId1);
-		shader.updateUniform1i("tex1", 0);// 设置纹理单元为0号
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, textureId2);
-		shader.updateUniform1i("tex2", 1);// 设置纹理单元为1号
+		glBindTexture(GL_TEXTURE_2D, textureId);
+		shader.updateUniform1i("tex", 0);// 设置纹理单元为0号
 
-		shader.updateUniform1f("mixValue", mixValue);// 设置纹理混合参数
-
-		// 使用索引绘制
+		// 绘制第一个矩形，第一象限，保持原位置
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		// 绘制第二个矩形，第二象限，x轴平移-0.5f
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		// 绘制第三个矩形，第三象限，x轴平移-0.8f，y轴平移-0.8f
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(-0.8f, -0.8f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		// 绘制第四个矩形，第四象限，y轴平移-0.5f
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+		// 绘制坐标轴
+		glBindVertexArray(axisVAOIds[0]);
+		axisShader.use();
+		glDrawArrays(GL_TRIANGLES, 0, 9);
+		glBindVertexArray(axisVAOIds[1]);
+		glDrawArrays(GL_LINES, 0, 6);
+
 		glBindVertexArray(0);
 		glUseProgram(0);
 
