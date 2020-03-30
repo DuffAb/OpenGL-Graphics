@@ -113,7 +113,7 @@ int main()
 	glGenVertexArrays(1, &VAOId);
 	glBindVertexArray(VAOId);
 	
-	// 2.创建并绑定VBO 对象
+	// 2.创建并绑定VBO对象
 	glGenBuffers(1, &VBOId);
 	glBindBuffer(GL_ARRAY_BUFFER, VBOId);
 	// 分配空间，传送顶点数据
@@ -167,15 +167,15 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	//第二部分：准备着色器程序
-	Shader shader("shader/modelTransformation/translation/rectangle.vertex", "shader/modelTransformation/translation/rectangle.frag");
-	Shader axisShader("shader/modelTransformation/translation/axis.vertex", "shader/modelTransformation/translation/axis.frag");
+	// 第二部分：准备着色器程序
+	Shader shader("shader/modelTransformation/scale/rectangle.vertex", "shader/modelTransformation/scale/rectangle.frag");
+	Shader axisShader("shader/modelTransformation/scale/axis.vertex", "shader/modelTransformation/scale/axis.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
 
-	// Section3 准备纹理对象
+	// 第三部分：准备纹理对象
 	GLuint textureId = TextureHelper::load2DTexture("resources/textures/cat.png");
 
 	// 开始游戏主循环
@@ -205,21 +205,24 @@ int main()
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第二个矩形，第二象限，x轴平移-0.5f
+		// 绘制第二个矩形，第二象限，x轴y轴都缩小一半，然后x轴平移-0.25f. 先缩放后平移，代码书写顺序和变换顺序相反的
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(-0.25f, 0.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(0.5f, 0.5f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第三个矩形，第三象限，x轴平移-0.8f，y轴平移-0.8f
+		// 绘制第三个矩形，第三象限，x轴y轴都放大两倍，分别x轴平移-1.0f，y轴平移-1.0f
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-0.8f, -0.8f, 0.0f));
+		model = glm::translate(model, glm::vec3(-1.0f, -1.0f, 0.0f));
+		model = glm::scale(model, glm::vec3(2.0f, 2.0f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第四个矩形，第四象限，y轴平移-0.5f
+		// 绘制第四个矩形，第四象限，x轴放大两倍，y轴缩小为一半，x轴平移-0.25f
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
+		model = glm::translate(model, glm::vec3(0.0f, -0.25f, 0.0f));
+		model = glm::scale(model, glm::vec3(2.0f, 0.5f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
