@@ -168,8 +168,8 @@ int main()
 	glBindVertexArray(0);
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/modelTransformation/scale/rectangle.vertex", "shader/modelTransformation/scale/rectangle.frag");
-	Shader axisShader("shader/modelTransformation/scale/axis.vertex", "shader/modelTransformation/scale/axis.frag");
+	Shader shader("shader/modelTransformation/rotation/rectangle.vertex", "shader/modelTransformation/rotation/rectangle.frag");
+	Shader axisShader("shader/modelTransformation/rotation/axis.vertex", "shader/modelTransformation/rotation/axis.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -202,27 +202,31 @@ int main()
 		shader.updateUniform1i("tex", 0);// 设置纹理单元为0号
 
 		// 绘制第一个矩形，第一象限，保持原位置
+		model = glm::mat4();
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第二个矩形，第二象限，x轴y轴都缩小一半，然后x轴平移-0.25f. 先缩放后平移，代码书写顺序和变换顺序相反的
+		// 绘制第二个矩形，第二象限，+z轴，原点旋转90度
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-0.25f, 0.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(0.5f, 0.5f, 1.0f));
+		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第三个矩形，第三象限，x轴y轴都放大两倍，分别x轴平移-1.0f，y轴平移-1.0f
+		// 绘制第三个矩形，第三象限，绕着矩形中心旋转
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-1.0f, -1.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(2.0f, 2.0f, 1.0f));
+		model = glm::translate(model, glm::vec3(-0.5f, -0.5f, 0.0f));
+		model = glm::translate(model, glm::vec3(0.25f, 0.25f, 0.0f));
+		model = glm::rotate(model, (GLfloat)glfwGetTime() * 2.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+		model = glm::translate(model, glm::vec3(-0.25f, -0.25f, 0.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
-		// 绘制第四个矩形，第四象限，x轴放大两倍，y轴缩小为一半，x轴平移-0.25f
+		// 绘制第四个矩形，第四象限，绕着右下角旋转
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(0.0f, -0.25f, 0.0f));
-		model = glm::scale(model, glm::vec3(2.0f, 0.5f, 1.0f));
+		model = glm::translate(model, glm::vec3(0.0f, -0.5f, 0.0f));
+		model = glm::translate(model, glm::vec3(0.5f, 0.0f, 0.0f));
+		model = glm::rotate(model, (GLfloat)glfwGetTime() * 2.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+		model = glm::translate(model, glm::vec3(-0.5f, 0.0f, 0.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
