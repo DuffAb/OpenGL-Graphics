@@ -72,42 +72,51 @@ int main()
 	// Section1 准备顶点数据
 	// 指定顶点属性数据 顶点位置 颜色 纹理
 	GLfloat vertices[] = {
-		0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,  // 0
-		0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // 1
-		0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,  // 2
-		0.0f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // 3
-	};
+		-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
+		 0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// B
+		 0.5f,  0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // C
+		 0.5f,  0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,   // C
+		-0.5f,  0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// D
+		-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
 
-	// 索引数据
-	GLshort indices[] = {
-		0, 1, 2,  // 第一个三角形
-		0, 2, 3   // 第二个三角形
-	};
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// E
+		-0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0, 1.0f,   // H
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// G
+		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// G
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// F
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// E
 
-	// 指定坐标轴三角形箭头属性数据 顶点 颜色
-	GLfloat axisTriangleData[] = {
-		0.945f,    0.03125f,  0.0f,   1.0f, 0.0f, 0.0f, // +x轴三角形
-		1.0f,      0.0f,      0.0f,   1.0f, 0.0f, 0.0f,
-		0.945f,    -0.03125f, 0.0f,   1.0f, 0.0f, 0.0f,
-		-0.03125f, 0.945f,    0.0f,   0.0f, 1.0f, 0.0f,// +y轴三角形
-		0.0f,      1.0f,      0.0f,   0.0f, 1.0f, 0.0f,
-		0.03125f,  0.945f,    0.0f,   0.0f, 1.0f, 0.0f,
-		-0.03125f, 0.0f,      0.945f, 0.0f, 0.0f, 1.0f,// +z轴三角形
-		0.0f,      0.0f,      1.0f,   0.0f, 0.0f, 1.0f,
-		0.03125f,  0.0f,      0.945f, 0.0f, 0.0f, 1.0f,
-	};
-	// 指定坐标轴直线属性数据 顶点 颜色
-	GLfloat axisLineData[] = {
-		-1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		1.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
-		0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 1.0f
+		-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// D
+		-0.5f,  0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0, 1.0f,   // H
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,	// E
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,	// E
+		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
+		-0.5f,  0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// D
+
+		0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// F
+		0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// G
+		0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,	// C
+		0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,	// C
+		0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,	// B
+		0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// F
+
+		 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// G
+		-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,   // H
+		-0.5f, 0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,	// D
+		-0.5f, 0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,	// D
+		 0.5f, 0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f,	// C
+		 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,	// G
+
+		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f,	// E
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,	// F
+		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,	// F
+		 0.5f, -0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// B
+		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
 	};
 
 	// 创建缓存对象
-	GLuint VAOId, VBOId, EBOId;
+	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
 	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
 	glGenVertexArrays(1, &VAOId);
@@ -119,14 +128,7 @@ int main()
 	// 分配空间，传送顶点数据
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	// 3.创建并绑定EBO对象
-	glGenBuffers(1, &EBOId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBOId);
-	// 分配空间，传送索引数据
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	
-	
-	// 4.指定解析方式，并启用顶点属性
+	// 3.指定解析方式，并启用顶点属性
 	// 顶点位置属性
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
@@ -142,34 +144,8 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 
-	// 准备坐标轴数据
-	GLuint axisVAOIds[2], axisVBOIds[2];
-	glGenVertexArrays(2, axisVAOIds);
-	glBindVertexArray(axisVAOIds[0]);
-	glGenBuffers(2, axisVBOIds);
-	// 准备坐标轴箭头
-	glBindBuffer(GL_ARRAY_BUFFER, axisVBOIds[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(axisTriangleData), axisTriangleData, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-	// 准备坐标轴直线
-	glBindVertexArray(axisVAOIds[1]);
-	glBindBuffer(GL_ARRAY_BUFFER, axisVBOIds[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(axisLineData), axisLineData, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,	6 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
 	// 第二部分：准备着色器程序
-	Shader shader("shader/modelTransformation/reflection/rectangle.vertex", "shader/modelTransformation/reflection/rectangle.frag");
-	Shader axisShader("shader/modelTransformation/reflection/axis.vertex", "shader/modelTransformation/reflection/axis.frag");
+	Shader shader("shader/viewTransformation/cube/cube.vertex", "shader/viewTransformation/cube/cube.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -178,6 +154,8 @@ int main()
 	// 第三部分：准备纹理对象
 	GLuint textureId = TextureHelper::load2DTexture("resources/textures/cat.png");
 
+	//开启深度测试
+	glEnable(GL_DEPTH_TEST);
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
@@ -185,51 +163,32 @@ int main()
 
 		// 清除颜色缓冲区 重置为指定颜色
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// 这里填写场景绘制代码
 		glBindVertexArray(VAOId);
 		shader.use();
 
-		glm::mat4 projection;	// 投影变换矩阵
-		glm::mat4 view;			// 视变换矩阵
-		glm::mat4 model;		// 模型变换矩阵
+		// 投影矩阵
+		glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)(width) / width, 1.0f, 100.0f);
+		GLfloat radius = 3.0f;
+		GLfloat xPos = radius * cos(glfwGetTime());
+		GLfloat zPos = radius * sin(glfwGetTime());
+		glm::vec3 eyePos(xPos, 0.0f, zPos);
+		//glm::vec3 eyePos(radius-0.5f, 0.0f, radius);
+		glm::mat4 view = glm::lookAt(eyePos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 model;
+		// 绘制立方体
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 启用多个纹理单元 绑定纹理对象
+		// 启用纹理单元 绑定纹理对象
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureId);
-		shader.updateUniform1i("tex", 0);// 设置纹理单元为0号
+		shader.updateUniform1i("tex", 0); // 设置纹理单元为0号
 
-		// 绘制第一个矩形，第一象限，保持原位置
-		model = glm::mat4();
+		// 绘制立方体
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-		// 绘制第二个矩形，第二象限，沿着y轴镜像
-		model = glm::mat4();
-		model = glm::scale(model, glm::vec3(-1.0f, 1.0f, 1.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-		// 绘制第三个矩形，第三象限，关于原点镜像
-		model = glm::mat4();
-		model = glm::scale(model, glm::vec3(-1.0f, -1.0f, 1.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-		// 绘制第四个矩形，第四象限，关于x轴镜像
-		model = glm::mat4();
-		model = glm::scale(model, glm::vec3(1.0f, -1.0f, 1.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-		// 绘制坐标轴
-		glBindVertexArray(axisVAOIds[0]);
-		axisShader.use();
-		glDrawArrays(GL_TRIANGLES, 0, 9);
-		glBindVertexArray(axisVAOIds[1]);
-		glDrawArrays(GL_LINES, 0, 6);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
