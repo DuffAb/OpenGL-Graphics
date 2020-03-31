@@ -12,16 +12,12 @@
 #include "texture.h"
 // 包含数学辅助
 #include "math.h"
-
-// 获取eye位置
-glm::vec3 getEyePosCircle();
-glm::vec3 getEyePosSphere();
+// 包含相机控制辅助类
+#include "camera.h"
 
 // Window dimensions
 const GLuint WIDTH = 960;
 const GLuint HEIGHT = 540;
-
-bool isCircleEyePos = false;
 
 int main()
 {
@@ -51,9 +47,19 @@ int main()
 	// 创建的窗口的context指定为当前context
 	glfwMakeContextCurrent(window);
 	
+	Event event(window);
 	// 注册窗口键盘事件回调函数
-	glfwSetKeyCallback(window, key_callback);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	event.setEvent(glfwKey);
+	// 注册鼠标事件回调函数
+	event.setEvent(glfwCursorPos);
+	// 注册鼠标滚轮事件回调函数
+	event.setEvent(glfwScroll);
+	// 注册窗口大小事件回调函数
+	event.setEvent(glfwFramebufferSize);
+	
+	// 鼠标捕获 停留在程序内
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 
 	// 让glew获取所有拓展函数
 	glewExperimental = GL_TRUE;
@@ -159,7 +165,7 @@ int main()
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/viewTransformation/moreCubes/cube.vertex", "shader/viewTransformation/moreCubes/cube.frag");
+	Shader shader("shader/FPS-Euler/cube.vertex", "shader/FPS-Euler/cube.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -173,7 +179,11 @@ int main()
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
+		GLfloat currentFrame = (GLfloat)glfwGetTime();
+		deltaTime = currentFrame - lastFrame;
+		lastFrame = currentFrame;
 		glfwPollEvents(); // 处理例如鼠标 键盘等事件
+		do_movement(); // 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 重置为指定颜色
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
@@ -185,20 +195,8 @@ int main()
 
 		// 投影矩阵
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)(width) / width, 1.0f, 100.0f);
-		GLfloat radius = 3.0f;
-		GLfloat xPos = radius * cos(glfwGetTime());
-		GLfloat zPos = radius * sin(glfwGetTime());
-		glm::vec3 eyePos;
-		// 设定相机位置随时间变换
-		if (isCircleEyePos)
-		{
-			eyePos = getEyePosCircle();
-		}
-		else
-		{
-			eyePos = getEyePosSphere();
-		}
-		glm::mat4 view = glm::lookAt(eyePos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 view;
+		view = camera.getViewMatrix();
 		glm::mat4 model;
 		// 绘制立方体
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
