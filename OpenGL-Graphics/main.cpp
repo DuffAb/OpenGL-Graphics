@@ -13,11 +13,15 @@
 // 包含数学辅助
 #include "math.h"
 
+// 获取eye位置
+glm::vec3 getEyePosCircle();
+glm::vec3 getEyePosSphere();
 
 // Window dimensions
 const GLuint WIDTH = 960;
 const GLuint HEIGHT = 540;
 
+bool isCircleEyePos = false;
 
 int main()
 {
@@ -37,7 +41,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of mixing 2D texture(press A and S to adjust)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "opengl", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -115,6 +119,16 @@ int main()
 		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
 	};
 
+	glm::vec3 cubePostitions[] = {
+		glm::vec3( 0.0f,  0.0f,  1.2f),
+		glm::vec3( 0.0f,  0.0f,  0.0f),
+		glm::vec3( 1.2f,  1.2f,  0.0f),
+		glm::vec3(-1.2f,  1.2f,  0.0f),
+		glm::vec3(-1.2f, -1.5f,  0.0f),
+		glm::vec3( 1.2f, -1.5f,  0.0f),
+		glm::vec3( 0.0f,  0.0f, -1.2f),
+	};
+
 	// 创建缓存对象
 	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
@@ -145,7 +159,7 @@ int main()
 	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/viewTransformation/cube/cube.vertex", "shader/viewTransformation/cube/cube.frag");
+	Shader shader("shader/viewTransformation/moreCubes/cube.vertex", "shader/viewTransformation/moreCubes/cube.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -174,21 +188,34 @@ int main()
 		GLfloat radius = 3.0f;
 		GLfloat xPos = radius * cos(glfwGetTime());
 		GLfloat zPos = radius * sin(glfwGetTime());
-		glm::vec3 eyePos(xPos, 0.0f, zPos);
-		//glm::vec3 eyePos(radius-0.5f, 0.0f, radius);
+		glm::vec3 eyePos;
+		// 设定相机位置随时间变换
+		if (isCircleEyePos)
+		{
+			eyePos = getEyePosCircle();
+		}
+		else
+		{
+			eyePos = getEyePosSphere();
+		}
 		glm::mat4 view = glm::lookAt(eyePos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 model;
 		// 绘制立方体
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 启用纹理单元 绑定纹理对象
+		// 启用纹理单元，绑定纹理对象
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureId);
 		shader.updateUniform1i("tex", 0); // 设置纹理单元为0号
 
-		// 绘制立方体
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// 绘制多个立方体
+		for (int i = 0; i < sizeof(cubePostitions) / sizeof(cubePostitions[0]); ++i)
+		{
+			model = glm::mat4();
+			model = glm::translate(model, cubePostitions[i]);
+			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -203,4 +230,24 @@ int main()
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
+}
+
+// xoz平面内圆形坐标
+glm::vec3 getEyePosCircle()
+{
+	GLfloat radius = 6.0f;
+	GLfloat xPos = radius * cos(glfwGetTime());
+	GLfloat zPos = radius * sin(glfwGetTime());
+	return glm::vec3(xPos, 0.0f, zPos);
+}
+// 球形坐标 这里计算theta phi角度仅做示例演示
+// 可以根据需要设定
+glm::vec3 getEyePosSphere()
+{
+	GLfloat radius = 6.0f;
+	GLfloat theta = glfwGetTime(), phi = glfwGetTime() / 2.0f;
+	GLfloat xPos = radius * sin(theta) * cos(phi);
+	GLfloat yPos = radius * sin(theta) * sin(phi);
+	GLfloat zPos = radius * cos(theta);
+	return glm::vec3(xPos, yPos, zPos);
 }
