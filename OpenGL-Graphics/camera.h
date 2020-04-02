@@ -16,7 +16,7 @@ enum Camera_Movement {
 	RIGHT
 };
 // 定义预设常量
-const GLfloat YAW = 0.0f;
+const GLfloat YAW = -90.0f;
 const GLfloat PITCH = 0.0f;
 const GLfloat SPEED = 3.0f;
 const GLfloat MOUSE_SENSITIVTY = 0.05f;
@@ -29,7 +29,7 @@ public:
 	Camera(glm::vec3 pos = glm::vec3(0.0, 0.0, 2.0),
 		glm::vec3 up = glm::vec3(0.0, 1.0, 0.0),
 		GLfloat yaw  = YAW, GLfloat pitch = PITCH) 
-		:position(pos), forward(0.0, 0.0, -1.0), viewUp(up),
+		:position(pos), forward(0.0, 0.0, -1.0), worldUp(up),
 		moveSpeed(SPEED), mouse_zoom(MOUSE_ZOOM), mouse_sensitivity(MOUSE_SENSITIVTY),
 		yawAngle(yaw), pitchAngle(pitch)
 	{
@@ -70,8 +70,8 @@ public:
 		xoffset *= this->mouse_sensitivity; // 用鼠标灵敏度调节角度变换
 		yoffset *= this->mouse_sensitivity;
 
-		this->pitchAngle += yoffset;
 		this->yawAngle += xoffset;
+		this->pitchAngle += yoffset;
 
 		this->normalizeAngle();
 		this->updateCameraVectors();
@@ -99,20 +99,18 @@ public:
 	// 计算forward side向量
 	void updateCameraVectors()
 	{
+		//yawAngle：绕y轴旋转，pitchAngle：绕x轴旋转
 		glm::vec3 forward;
-		forward.x = -sin(glm::radians(this->yawAngle)) * cos(glm::radians(this->pitchAngle));
+		forward.x = cos(glm::radians(this->pitchAngle)) * cos(glm::radians(this->yawAngle));
 		forward.y = sin(glm::radians(this->pitchAngle));
-		forward.z = -cos(glm::radians(this->yawAngle)) * cos(glm::radians(this->pitchAngle));
+		forward.z = cos(glm::radians(this->pitchAngle)) * sin(glm::radians(this->yawAngle));
 		this->forward = glm::normalize(forward);
-		
-		glm::vec3 side;
-		side.x = cos(glm::radians(this->yawAngle));
-		side.y = 0;
-		side.z = -sin(glm::radians(this->yawAngle));
-		this->side = glm::normalize(side);
+
+		this->side = glm::normalize(glm::cross(this->forward, this->worldUp));
+		this->viewUp = glm::normalize(glm::cross(this->side, this->forward));
 	}
 public:
-	glm::vec3 forward,up, side, viewUp, position; // 相机属性
+	glm::vec3 forward, worldUp, side, viewUp, position; // 相机属性
 	GLfloat yawAngle, pitchAngle; // 欧拉角
 	GLfloat moveSpeed, mouse_sensitivity, mouse_zoom; // 相机选项
 };

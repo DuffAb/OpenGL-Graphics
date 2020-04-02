@@ -15,9 +15,6 @@
 // 包含相机控制辅助类
 #include "camera.h"
 
-// Window dimensions
-const GLuint WIDTH = 960;
-const GLuint HEIGHT = 540;
 
 int main()
 {
@@ -36,7 +33,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);//We don't want the old OpenGL
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-	// Create a GLFWwindow object that we can use for GLFW's functions
+	// 创建窗口
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "opengl", nullptr, nullptr);
 	if (window == nullptr)
 	{
@@ -61,9 +58,8 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 
-	// 让glew获取所有拓展函数
-	glewExperimental = GL_TRUE;
-	// Initialize GLEW to setup the OpenGL Function pointers
+	// 初始化GLEW 获取OpenGL函数
+	glewExperimental = GL_TRUE;// 让glew获取所有拓展函数
 	GLenum status = glewInit();
 	if (status != GLEW_OK)
 	{
@@ -125,16 +121,6 @@ int main()
 		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,	// A
 	};
 
-	glm::vec3 cubePostitions[] = {
-		glm::vec3( 0.0f,  0.0f,  1.2f),
-		glm::vec3( 0.0f,  0.0f,  0.0f),
-		glm::vec3( 1.2f,  1.2f,  0.0f),
-		glm::vec3(-1.2f,  1.2f,  0.0f),
-		glm::vec3(-1.2f, -1.5f,  0.0f),
-		glm::vec3( 1.2f, -1.5f,  0.0f),
-		glm::vec3( 0.0f,  0.0f, -1.2f),
-	};
-
 	// 创建缓存对象
 	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
@@ -158,21 +144,28 @@ int main()
 	// 顶点纹理坐标
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,	8 * sizeof(GL_FLOAT), (GLvoid*)(6 * sizeof(GL_FLOAT)));
 	glEnableVertexAttribArray(2);
-
 	// 解除绑定，防止后续操作干扰到了当前VAO和VBO
-	// glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); // 注意不要解除EBO绑定
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-	glBindVertexArray(0);			  // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs)
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	// 创建光源的VAO
+	GLuint lampVAOId;
+	glGenVertexArrays(1, &lampVAOId);
+	glBindVertexArray(lampVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOId); // 重用上面的数据，无需重复发送顶点数据，仍然需要指定解析方式
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0); // 只需要顶点位置即可
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/FPS-Euler/cube.vertex", "shader/FPS-Euler/cube.frag");
+	Shader shader("shader/lighting/GouraudShading/cube.vertex", "shader/lighting/GouraudShading/cube.frag");
+	Shader lampShader("shader/lighting/GouraudShading/lamp.vertex", "shader/lighting/GouraudShading/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
-
-	// 第三部分：准备纹理对象
-	GLuint textureId = TextureHelper::load2DTexture("resources/textures/cat.png");
 
 	//开启深度测试
 	glEnable(GL_DEPTH_TEST);
@@ -193,31 +186,38 @@ int main()
 		glBindVertexArray(VAOId);
 		shader.use();
 
-		// 投影矩阵
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), (GLfloat)(width) / width, 1.0f, 100.0f);
+		// 投影变换矩阵
+		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 1.0f, 100.0f);
+		// 视变换矩阵
 		glm::mat4 view;
 		view = camera.getViewMatrix();
+		// 模型变换矩阵
 		glm::mat4 model;
-		// 绘制立方体
+		// 设置光源属性和物体颜色属性
+		shader.updateUniform3f("objectColor", 1.0f, 0.5f, 0.31f);
+		shader.updateUniform3f("lightColor", 1.0f, 1.0f, 1.0f);
+		shader.updateUniform3f("lightPos", lampPos.x, lampPos.y, lampPos.z);
+		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
+		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 启用纹理单元，绑定纹理对象
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureId);
-		shader.updateUniform1i("tex", 0); // 设置纹理单元为0号
-
-		// 绘制多个立方体
-		for (int i = 0; i < sizeof(cubePostitions) / sizeof(cubePostitions[0]); ++i)
-		{
-			model = glm::mat4();
-			model = glm::translate(model, cubePostitions[i]);
-			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
+		// 绘制立方体
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		
+		// 绘制光源 用立方体代表
+		glBindVertexArray(lampVAOId);
+		lampShader.use();
+		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		model = glm::mat4();
+		model = glm::translate(model, lampPos);
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
-
 		glfwSwapBuffers(window); // 交换缓存
 	}
 

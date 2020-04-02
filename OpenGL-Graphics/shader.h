@@ -60,6 +60,18 @@ public:
 		glUniform1f(location, i);
 	}
 
+	void updateUniform3f(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2)
+	{
+		GLint location = glGetUniformLocation(programId, name);
+		glUniform3f(location, v0, v1, v2);
+	}
+
+	void updateUniform3fv(const GLchar* name, const GLfloat* value)
+	{
+		GLint location = glGetUniformLocation(programId, name);
+		glUniform3fv(location, 1, value);
+	}
+
 	void updateUniformMatrix4fv(const GLchar* name, GLsizei count, GLboolean transpose, const GLfloat* value)
 	{
 		GLint location = glGetUniformLocation(programId, name);

@@ -7,12 +7,19 @@
 bool keys[1024];		// 按键情况记录
 GLfloat mixValue = 0.4f;// 纹理混合参数
 
+// Window dimensions
+const GLuint WIDTH = 960;
+const GLuint HEIGHT = 540;
+
 // 用于相机交互参数
-GLfloat lastX = 0.0f, lastY = 0.0f;
+GLfloat lastX = WIDTH / 2.0f, lastY = HEIGHT / 2.0f;
 bool firstMouseMove = true;
 GLfloat deltaTime = 0.0f; // 当前帧和上一帧的时间差
 GLfloat lastFrame = 0.0f; // 上一帧时间
-Camera camera(glm::vec3(0.0f, 0.0f, 4.0f));
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+
+glm::vec3 lampPos(1.2f, 1.0f, 2.0f);
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
