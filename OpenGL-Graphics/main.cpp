@@ -160,8 +160,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/lightingInViewSpace/cube.vertex", "shader/lighting/lightingInViewSpace/cube.frag");
-	Shader lampShader("shader/lighting/lightingInViewSpace/lamp.vertex", "shader/lighting/lightingInViewSpace/lamp.frag");
+	Shader shader("shader/lighting/lightWithMaterial/cube.vertex", "shader/lighting/lightWithMaterial/cube.frag");
+	Shader lampShader("shader/lighting/lightWithMaterial/lamp.vertex", "shader/lighting/lightWithMaterial/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -190,17 +190,25 @@ int main()
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 1.0f, 100.0f);
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
-		// 设置光源属性和物体颜色属性
-		shader.updateUniform3f("objectColor", 1.0f, 0.5f, 0.31f);
-		shader.updateUniform3f("lightColor", 1.0f, 1.0f, 1.0f);
-		
-		// 在相机坐标系计算光照时 viewPos始终位于原点
-		//shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
-		// 光源随时间变动
-		GLfloat radius = 2.0f;
-		lampPos.x = radius * cos(glfwGetTime());
-		lampPos.z = radius * sin(glfwGetTime());
-		shader.updateUniform3f("lightPos", lampPos.x, lampPos.y, lampPos.z);
+		// 随时间变化的光源属性
+		glm::vec3 lightColor;
+		lightColor.x = sin(glfwGetTime() * 2.0f);
+		lightColor.y = sin(glfwGetTime() * 0.7f);
+		lightColor.z = sin(glfwGetTime() * 1.3f);
+		glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); // 适当减小影响
+		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
+		// 设置光源属性
+		shader.updateUniform3f("light.ambient", ambientColor.x, ambientColor.y, ambientColor.z);
+		shader.updateUniform3f("light.diffuse", diffuseColor.x, diffuseColor.y, diffuseColor.z);
+		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
+		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
+		// 设置材料光照属性
+		shader.updateUniform3f("material.ambient", 1.0f, 0.5f, 0.31f);
+		shader.updateUniform3f("material.diffuse", 1.0f, 0.5f, 0.31f);
+		shader.updateUniform3f("material.specular", 0.5f, 0.5f, 0.5f);
+		shader.updateUniform1f("material.shininess", 32.0f);
+		// 设置观察者位置
+		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
 		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
@@ -229,7 +237,7 @@ int main()
 	// 释放资源
 	glDeleteVertexArrays(1, &VAOId);
 	glDeleteBuffers(1, &VBOId);
-
+	glDeleteVertexArrays(1, &lampVAOId);
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
