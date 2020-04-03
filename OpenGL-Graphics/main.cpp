@@ -34,7 +34,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "opengl", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Basic lighting", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -125,7 +125,6 @@ int main()
 	// 创建缓存对象
 	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
 	glGenVertexArrays(1, &VAOId);
 	glBindVertexArray(VAOId);
 	
@@ -161,8 +160,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/lightingInWorldSpace/cube.vertex", "shader/lighting/lightingInWorldSpace/cube.frag");
-	Shader lampShader("shader/lighting/lightingInWorldSpace/lamp.vertex", "shader/lighting/lightingInWorldSpace/lamp.frag");
+	Shader shader("shader/lighting/lightingInViewSpace/cube.vertex", "shader/lighting/lightingInViewSpace/cube.frag");
+	Shader lampShader("shader/lighting/lightingInViewSpace/lamp.vertex", "shader/lighting/lightingInViewSpace/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -194,13 +193,20 @@ int main()
 		// 设置光源属性和物体颜色属性
 		shader.updateUniform3f("objectColor", 1.0f, 0.5f, 0.31f);
 		shader.updateUniform3f("lightColor", 1.0f, 1.0f, 1.0f);
+		
+		// 在相机坐标系计算光照时 viewPos始终位于原点
+		//shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
+		// 光源随时间变动
+		GLfloat radius = 2.0f;
+		lampPos.x = radius * cos(glfwGetTime());
+		lampPos.z = radius * sin(glfwGetTime());
 		shader.updateUniform3f("lightPos", lampPos.x, lampPos.y, lampPos.z);
-		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
 		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		// 绘制立方体
 		glm::mat4 model;// 模型变换矩阵
+		//model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		
