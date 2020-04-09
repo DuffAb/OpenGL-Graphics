@@ -34,7 +34,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Basic lighting", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of lighting with diffuse and specular map", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -160,13 +160,19 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/lightWithMaterial/cube.vertex", "shader/lighting/lightWithMaterial/cube.frag");
-	Shader lampShader("shader/lighting/lightWithMaterial/lamp.vertex", "shader/lighting/lightWithMaterial/lamp.frag");
+	Shader shader("shader/lighting/lightWithDiffuseMap/cube.vertex", "shader/lighting/lightWithDiffuseMap/cube.frag");
+	Shader lampShader("shader/lighting/lightWithDiffuseMap/lamp.vertex", "shader/lighting/lightWithDiffuseMap/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
 
+	GLint diffuseMap = TextureHelper::load2DTexture("resources/textures/container_diffuse.png");
+	GLint specularMap = TextureHelper::load2DTexture("resources/textures/container_specular.png");
+	shader.use();
+	shader.updateUniform1i("material.diffuseMap", 0);
+	shader.updateUniform1i("material.specularMap", 1);
+	
 	//开启深度测试
 	glEnable(GL_DEPTH_TEST);
 	// 开始游戏主循环
@@ -190,22 +196,19 @@ int main()
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 1.0f, 100.0f);
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
-		// 随时间变化的光源属性
-		glm::vec3 lightColor;
-		lightColor.x = sin(glfwGetTime() * 2.0f);
-		lightColor.y = sin(glfwGetTime() * 0.7f);
-		lightColor.z = sin(glfwGetTime() * 1.3f);
-		glm::vec3 diffuseColor = lightColor * glm::vec3(0.5f); // 适当减小影响
-		glm::vec3 ambientColor = diffuseColor * glm::vec3(0.2f);
+		
 		// 设置光源属性
-		shader.updateUniform3f("light.ambient", ambientColor.x, ambientColor.y, ambientColor.z);
-		shader.updateUniform3f("light.diffuse", diffuseColor.x, diffuseColor.y, diffuseColor.z);
+		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
+		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
 		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
 		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
 		// 设置材料光照属性
-		shader.updateUniform3f("material.ambient", 1.0f, 0.5f, 0.31f);
-		shader.updateUniform3f("material.diffuse", 1.0f, 0.5f, 0.31f);
-		shader.updateUniform3f("material.specular", 0.5f, 0.5f, 0.5f);
+		// 启用diffuseMap
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, diffuseMap);
+		// 启用specularMap
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, specularMap);
 		shader.updateUniform1f("material.shininess", 32.0f);
 		// 设置观察者位置
 		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
