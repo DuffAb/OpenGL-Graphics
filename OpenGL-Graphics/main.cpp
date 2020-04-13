@@ -15,6 +15,7 @@
 // 包含相机控制辅助类
 #include "camera.h"
 
+glm::vec3 lampDir(0.5f, 0.8f, 0.0f);
 
 int main()
 {
@@ -34,7 +35,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of lighting with diffuse and specular map", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of directional lighting", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -122,6 +123,19 @@ int main()
 		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,  // A
 	};
 
+	glm::vec3 cubePositions[] = {
+		glm::vec3( 0.0f,  0.0f,  0.0f),
+		glm::vec3( 2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3( 2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3( 1.3f, -2.0f, -2.5f),
+		glm::vec3( 1.5f,  2.0f, -2.5f),
+		glm::vec3( 1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
+
 	// 创建缓存对象
 	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
@@ -160,8 +174,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/lightWithDiffuseMap/cube.vertex", "shader/lighting/lightWithDiffuseMap/cube.frag");
-	Shader lampShader("shader/lighting/lightWithDiffuseMap/lamp.vertex", "shader/lighting/lightWithDiffuseMap/lamp.frag");
+	Shader shader("shader/lighting/directionalLight/cube.vertex", "shader/lighting/directionalLight/cube.frag");
+	Shader lampShader("shader/lighting/directionalLight/lamp.vertex", "shader/lighting/directionalLight/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -185,7 +199,7 @@ int main()
 		do_movement(); // 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 重置为指定颜色
-		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// 这里填写场景绘制代码
@@ -201,7 +215,7 @@ int main()
 		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
 		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
 		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
+		shader.updateUniform3f("light.direction", lampDir.x, lampDir.y, lampDir.z);
 		// 设置材料光照属性
 		// 启用diffuseMap
 		glActiveTexture(GL_TEXTURE0);
@@ -209,20 +223,26 @@ int main()
 		// 启用specularMap
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, specularMap);
-		shader.updateUniform1f("material.shininess", 32.0f);
+		shader.updateUniform1f("material.shininess", 32.0f);//镜面高光系数
 		// 设置观察者位置
 		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
 		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 绘制立方体
+		// 绘制多个立方体
 		glm::mat4 model;// 模型变换矩阵
-		//model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		for (int i = 0; i < sizeof(cubePositions) / sizeof(cubePositions[0]); ++i)
+		{
+			model = glm::mat4();
+			model = glm::translate(model, cubePositions[i]);
+			GLfloat angle = 20.0f * i;
+			model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
+			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 		
-		// 绘制光源 用立方体代表
-		glBindVertexArray(lampVAOId);
+		// 绘制光源  不再需要用立方体模拟光源
+		/*glBindVertexArray(lampVAOId);
 		lampShader.use();
 		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
@@ -230,7 +250,7 @@ int main()
 		model = glm::translate(model, lampPos);
 		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
 		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 		glBindVertexArray(0);
 		glUseProgram(0);
