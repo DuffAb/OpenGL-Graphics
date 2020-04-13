@@ -35,7 +35,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of spot light", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of spot lighting(soft edge)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -174,8 +174,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/spotLight/cube.vertex", "shader/lighting/spotLight/cube.frag");
-	Shader lampShader("shader/lighting/spotLight/lamp.vertex", "shader/lighting/spotLight/lamp.frag");
+	Shader shader("shader/lighting/spotLight-soft-edge/cube.vertex", "shader/lighting/spotLight-soft-edge/cube.frag");
+	Shader lampShader("shader/lighting/spotLight-soft-edge/lamp.vertex", "shader/lighting/spotLight-soft-edge/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -218,6 +218,7 @@ int main()
 		shader.updateUniform3f("light.position", camera.position.x, camera.position.y, camera.position.z);
 		shader.updateUniform3f("light.direction", camera.forward.x, camera.forward.y, camera.forward.z);
 		shader.updateUniform1f("light.cutoff", cos(glm::radians(12.5f)));
+		shader.updateUniform1f("light.outerCutoff", cos(glm::radians(17.5f)));
 		// 设置衰减系数
 		shader.updateUniform1f("light.constant", 1.0f);		// 衰减常数
 		shader.updateUniform1f("light.linear", 0.09f);		// 衰减一次系数
