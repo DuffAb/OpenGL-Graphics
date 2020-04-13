@@ -174,8 +174,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/directionalLight/cube.vertex", "shader/lighting/directionalLight/cube.frag");
-	Shader lampShader("shader/lighting/directionalLight/lamp.vertex", "shader/lighting/directionalLight/lamp.frag");
+	Shader shader("shader/lighting/pointLight/cube.vertex", "shader/lighting/pointLight/cube.frag");
+	Shader lampShader("shader/lighting/pointLight/lamp.vertex", "shader/lighting/pointLight/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -211,11 +211,16 @@ int main()
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
 		
-		// 设置光源属性
+		// 设置光源属性  点光源
 		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
 		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
 		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.direction", lampDir.x, lampDir.y, lampDir.z);
+		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
+		// 设置衰减系数
+		shader.updateUniform1f("light.constant", 1.0f);		// 衰减常数
+		shader.updateUniform1f("light.linear", 0.09f);		// 衰减一次系数
+		shader.updateUniform1f("light.quadratic", 0.032f);	// 衰减二次系数
+		
 		// 设置材料光照属性
 		// 启用diffuseMap
 		glActiveTexture(GL_TEXTURE0);
@@ -241,8 +246,8 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		
-		// 绘制光源  不再需要用立方体模拟光源
-		/*glBindVertexArray(lampVAOId);
+		// 绘制点光源  用立方体代表
+		glBindVertexArray(lampVAOId);
 		lampShader.use();
 		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
@@ -250,7 +255,7 @@ int main()
 		model = glm::translate(model, lampPos);
 		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
 		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);*/
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
