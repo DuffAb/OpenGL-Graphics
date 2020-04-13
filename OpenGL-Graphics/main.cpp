@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
+#include <sstream>
 #include "common.h"
 #include "glfwcallback.h"
 
@@ -15,7 +17,8 @@
 // 包含相机控制辅助类
 #include "camera.h"
 
-glm::vec3 lampDir(0.5f, 0.8f, 0.0f);
+// 准备光源
+void setupLights(Shader& shader, glm::vec3* PointLightPositions, int pointLightCnt);
 
 int main()
 {
@@ -35,7 +38,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of spot lighting(soft edge)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiple lighting source", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -136,6 +139,13 @@ int main()
 		glm::vec3(-1.3f,  1.0f, -1.5f)
 	};
 
+	glm::vec3 pointLightPositions[] = {
+		glm::vec3(0.7f, 0.2f, 2.0f),
+		glm::vec3(2.3f, -3.3f, -4.0f),
+		glm::vec3(-4.0f, 2.0f, -12.0f),
+		glm::vec3(0.0f, 0.0f, -3.0f)
+	};
+
 	// 创建缓存对象
 	GLuint VAOId, VBOId;
 	// 1.创建并绑定VAO对象
@@ -174,8 +184,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/spotLight-soft-edge/cube.vertex", "shader/lighting/spotLight-soft-edge/cube.frag");
-	Shader lampShader("shader/lighting/spotLight-soft-edge/lamp.vertex", "shader/lighting/spotLight-soft-edge/lamp.frag");
+	Shader shader("shader/lighting/multipleLight/cube.vertex", "shader/lighting/multipleLight/cube.frag");
+	Shader lampShader("shader/lighting/multipleLight/lamp.vertex", "shader/lighting/multipleLight/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -211,18 +221,8 @@ int main()
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
 		
-		// 设置光源属性  FlashLight光源
-		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
-		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
-		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.position", camera.position.x, camera.position.y, camera.position.z);
-		shader.updateUniform3f("light.direction", camera.forward.x, camera.forward.y, camera.forward.z);
-		shader.updateUniform1f("light.cutoff", cos(glm::radians(12.5f)));
-		shader.updateUniform1f("light.outerCutoff", cos(glm::radians(17.5f)));
-		// 设置衰减系数
-		shader.updateUniform1f("light.constant", 1.0f);		// 衰减常数
-		shader.updateUniform1f("light.linear", 0.09f);		// 衰减一次系数
-		shader.updateUniform1f("light.quadratic", 0.032f);	// 衰减二次系数
+		setupLights(shader, pointLightPositions, sizeof(pointLightPositions) / sizeof(pointLightPositions[0]));
+		
 		
 		// 设置材料光照属性
 		// 启用diffuseMap
@@ -249,16 +249,19 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		
-		// 光源位置即观察者位置 不用绘制模拟的光源
-		/*glBindVertexArray(lampVAOId);
+		// 利用立方体模拟点光源
+		glBindVertexArray(lampVAOId);
 		lampShader.use();
 		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		model = glm::mat4();
-		model = glm::translate(model, lampPos);
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
-		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);*/
+		for (int i = 0; i < sizeof(pointLightPositions) / sizeof(pointLightPositions[0]); ++i)
+		{
+			model = glm::mat4();
+			model = glm::translate(model, lampPos);
+			model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
+			lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -272,6 +275,48 @@ int main()
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	return 0;
+}
+
+void setupLights(Shader& shader, glm::vec3* PointLightPositions, int pointLightCnt)
+{
+	shader.use();
+	// 设置方向光源
+	glm::vec3 lampDir(0.5f, 0.8f, 0.0f);
+	shader.updateUniform3f("dirLight.ambient", 0.0f, 0.1f, 0.4f);
+	shader.updateUniform3f("dirLight.diffuse", 0.0f, 0.2f, 0.8f);
+	shader.updateUniform3f("dirLight.specular", 0.0f, 1.0f, 1.0f);
+	shader.updateUniform3f("dirLight.direction", lampDir.x, lampDir.y, lampDir.z);
+
+	// 设置点光源
+	for (int i = 0; i < pointLightCnt; ++i)
+	{
+		// 设置光源属性 点光源
+		std::stringstream indexStr;
+		indexStr << i;
+		std::string lightName = "pointLights[" + indexStr.str() + "]";  // 使用数组索引pointLights[i]
+		shader.updateUniform3f((lightName + ".ambient").c_str(), 0.0f, 0.1f, 0.4f);
+		shader.updateUniform3f((lightName + ".diffuse").c_str(), 0.0f, 0.1f, 0.6f);
+		shader.updateUniform3f((lightName + ".specular").c_str(), 0.0f, 1.0f, 1.0f);
+		glm::vec3 lampPos = PointLightPositions[i];
+		shader.updateUniform3f((lightName + ".position").c_str(), lampPos.x, lampPos.y, lampPos.z);
+		// 设置衰减系数
+		shader.updateUniform1f((lightName + ".constant").c_str(), 1.0f);	// 衰减常数
+		shader.updateUniform1f((lightName + ".linear").c_str(), 0.09f);		// 衰减一次系数
+		shader.updateUniform1f((lightName + ".quadratic").c_str(), 0.032f);	// 衰减二次系数
+	}
+
+	// 设置FlashLight光源
+	shader.updateUniform3f("spotLight.ambient", 0.0f, 0.1f, 0.4f);
+	shader.updateUniform3f("spotLight.diffuse", 0.0f, 0.2f, 0.8f);
+	shader.updateUniform3f("spotLight.specular", 0.0f, 1.0f, 1.0f);
+	shader.updateUniform3f("spotLight.position", camera.position.x, camera.position.y, camera.position.z);
+	shader.updateUniform3f("spotLight.direction", camera.forward.x, camera.forward.y, camera.forward.z);
+	shader.updateUniform1f("spotLight.cutoff", cos(glm::radians(12.5f)));
+	shader.updateUniform1f("spotLight.outerCutoff", cos(glm::radians(17.5f)));
+	// 设置衰减系数
+	shader.updateUniform1f("spotLight.constant", 1.0f);
+	shader.updateUniform1f("spotLight.linear", 0.09f);
+	shader.updateUniform1f("spotLight.quadratic", 0.032f);
 }
 
 // xoz平面内圆形坐标
