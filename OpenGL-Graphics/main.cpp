@@ -35,7 +35,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of directional lighting", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of spot light", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -174,8 +174,8 @@ int main()
 
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/pointLight/cube.vertex", "shader/lighting/pointLight/cube.frag");
-	Shader lampShader("shader/lighting/pointLight/lamp.vertex", "shader/lighting/pointLight/lamp.frag");
+	Shader shader("shader/lighting/spotLight/cube.vertex", "shader/lighting/spotLight/cube.frag");
+	Shader lampShader("shader/lighting/spotLight/lamp.vertex", "shader/lighting/spotLight/lamp.frag");
 
 	// Uncommenting this call will result in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
@@ -211,11 +211,13 @@ int main()
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
 		
-		// 设置光源属性  点光源
+		// 设置光源属性  FlashLight光源
 		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
 		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
 		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
+		shader.updateUniform3f("light.position", camera.position.x, camera.position.y, camera.position.z);
+		shader.updateUniform3f("light.direction", camera.forward.x, camera.forward.y, camera.forward.z);
+		shader.updateUniform1f("light.cutoff", cos(glm::radians(12.5f)));
 		// 设置衰减系数
 		shader.updateUniform1f("light.constant", 1.0f);		// 衰减常数
 		shader.updateUniform1f("light.linear", 0.09f);		// 衰减一次系数
@@ -246,8 +248,8 @@ int main()
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
 		
-		// 绘制点光源  用立方体代表
-		glBindVertexArray(lampVAOId);
+		// 光源位置即观察者位置 不用绘制模拟的光源
+		/*glBindVertexArray(lampVAOId);
 		lampShader.use();
 		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
@@ -255,7 +257,7 @@ int main()
 		model = glm::translate(model, lampPos);
 		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
 		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDrawArrays(GL_TRIANGLES, 0, 36);*/
 
 		glBindVertexArray(0);
 		glUseProgram(0);
