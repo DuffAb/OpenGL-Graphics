@@ -157,6 +157,7 @@
     <ClInclude Include="glfwcallback.h" />
     <ClInclude Include="math.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="simpleobjloader.h" />
     <ClInclude Include="texture.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
