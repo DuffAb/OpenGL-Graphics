@@ -83,24 +83,7 @@ int main()
 
 	//Section1 加载模型数据 为了方便更换模型 我们从文件读取模型文件路径
 	Model objModel;
-	std::ifstream modelPath("shader/modelLoading/AssImplLoad/modelPath.txt");
-	if (!modelPath)
-	{
-		std::cerr << "Error::could not read model path file." << std::endl;
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
-	std::string modelFilePath;
-	std::getline(modelPath, modelFilePath);
-	if (modelFilePath.empty())
-	{
-		std::cerr << "Error::model path empty." << std::endl;
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
-	if (!objModel.loadModel(modelFilePath))
+	if (!objModel.loadModel("resources/models/nanosuit/nanosuit.obj"))
 	{
 		glfwTerminate();
 		std::system("pause");
@@ -108,7 +91,7 @@ int main()
 	}
 
 	// Section2 准备着色器程序
-	Shader shader("shader/modelLoading/AssImplLoad/model.vertex", "shader/modelLoading/AssImplLoad/model.frag");
+	Shader shader("shader/modelLoading/AssImpWithLight/model.vertex", "shader/modelLoading/AssImpWithLight/model.frag");
 				
 	//开启深度测试
 	glEnable(GL_DEPTH_TEST);
@@ -123,26 +106,31 @@ int main()
 		do_movement();		// 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 重置为指定颜色
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// 这里填写场景绘制代码
 		shader.use();
-
-		// 投影变换矩阵
-		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 1.0f, 100.0f);
+		// 设置光源属性 点光源
+		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
+		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
+		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
+		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
+		// 设置衰减系数
+		shader.updateUniform1f("light.constant", 1.0f);
+		shader.updateUniform1f("light.linear", 0.09f);
+		shader.updateUniform1f("light.quadratic", 0.032f);
+		// 设置观察者位置
+		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
+		// 投影矩阵
+		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 1.0f, 100.0f);
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
-		
-		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 绘制多个立方体
-		glm::mat4 model;// 模型变换矩阵
-		model = glm::translate(model, glm::vec3(0.0f, -1.55f, -1.0f)); // 适当调整位置
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));// 适当缩小模型
+		glm::mat4 model;
+		model = glm::translate(model, glm::vec3(0.0f, -1.55f, 0.0f)); // 适当下调位置
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f)); // 适当缩小模型
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		
 		// 这里填写场景绘制代码
 		objModel.draw(shader); // 绘制物体
 
