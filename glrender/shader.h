@@ -31,7 +31,7 @@ public:
 		fileVec.push_back(ShaderFile(GL_GEOMETRY_SHADER, geometryPath));
 		loadFromFile(fileVec);
 	}
-	void use()
+	void use() const
 	{
 		glUseProgram(this->programId);
 	}
@@ -42,37 +42,37 @@ public:
 			glDeleteProgram(this->programId);
 		}
 	}
-	void updateUniform4f(const GLchar* name, GLfloat f0, GLfloat f1, GLfloat f2, GLfloat f3)
+	void updateUniform4f(const GLchar* name, GLfloat f0, GLfloat f1, GLfloat f2, GLfloat f3) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform4f(location, f0, f1, f2, f3);
 	}
 
-	void updateUniform1i(const GLchar* name, GLint i)
+	void updateUniform1i(const GLchar* name, GLint i) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform1i(location, i); // 设置纹理单元为i号
 	}
 
-	void updateUniform1f(const GLchar* name, GLfloat i)
+	void updateUniform1f(const GLchar* name, GLfloat i) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform1f(location, i);
 	}
 
-	void updateUniform3f(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2)
+	void updateUniform3f(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform3f(location, v0, v1, v2);
 	}
 
-	void updateUniform3fv(const GLchar* name, const GLfloat* value)
+	void updateUniform3fv(const GLchar* name, const GLfloat* value) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniform3fv(location, 1, value);
 	}
 
-	void updateUniformMatrix4fv(const GLchar* name, GLsizei count, GLboolean transpose, const GLfloat* value)
+	void updateUniformMatrix4fv(const GLchar* name, GLsizei count, GLboolean transpose, const GLfloat* value) const
 	{
 		GLint location = glGetUniformLocation(programId, name);
 		glUniformMatrix4fv(location,	//uniform的位置

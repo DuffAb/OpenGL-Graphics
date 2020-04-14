@@ -10,14 +10,14 @@
 
 // 包含着色器加载库
 #include "shader.h"
-// 包含简单的obj读取文件
-#include "simpleobjloader.h"
+// 包含相机控制辅助类
+#include "camera.h"
 // 包含纹理加载辅助类
 #include "texture.h"
 // 包含数学辅助
 #include "math.h"
-// 包含相机控制辅助类
-#include "camera.h"
+// 加载模型的类
+#include "model.h"
 
 // 准备光源
 void setupLights(Shader& shader, glm::vec3* PointLightPositions, int pointLightCnt);
@@ -40,7 +40,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiple lighting source", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of loading model with AssImp", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -81,24 +81,35 @@ int main()
 	// 设置视口参数
 	glViewport(0, 0, width, height);
 
-	// Section1 从obj文件加载数据
-	std::vector<Vertex> vertData;
-	if (!ObjLoader::loadFromFile("resources/models/cube/cube.obj", vertData))
+	//Section1 加载模型数据 为了方便更换模型 我们从文件读取模型文件路径
+	Model objModel;
+	std::ifstream modelPath("shader/modelLoading/AssImplLoad/modelPath.txt");
+	if (!modelPath)
 	{
-		std::cerr << "Could not load obj model, exit now.";
+		std::cerr << "Error::could not read model path file." << std::endl;
+		glfwTerminate();
 		std::system("pause");
-		exit(-1);
+		return -1;
+	}
+	std::string modelFilePath;
+	std::getline(modelPath, modelFilePath);
+	if (modelFilePath.empty())
+	{
+		std::cerr << "Error::model path empty." << std::endl;
+		glfwTerminate();
+		std::system("pause");
+		return -1;
+	}
+	if (!objModel.loadModel(modelFilePath))
+	{
+		glfwTerminate();
+		std::system("pause");
+		return -1;
 	}
 
-	// Section2 准备纹理
-	GLint textureId = TextureHelper::loadDDS("resources/models/cube/cube.dds");
-	
-	// Section3 建立Mesh对象
-	Mesh mesh(vertData, textureId);
-
-	// Section4 准备着色器程序
-	Shader shader("shader/modelLoading/simpleObjLoader/cube.vertex", "shader/modelLoading/simpleObjLoader/cube.frag");
-		
+	// Section2 准备着色器程序
+	Shader shader("shader/modelLoading/AssImplLoad/model.vertex", "shader/modelLoading/AssImplLoad/model.frag");
+				
 	//开启深度测试
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -108,8 +119,8 @@ int main()
 		GLfloat currentFrame = (GLfloat)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		glfwPollEvents(); // 处理例如鼠标 键盘等事件
-		do_movement(); // 根据用户操作情况 更新相机属性
+		glfwPollEvents();	// 处理例如鼠标 键盘等事件
+		do_movement();		// 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 重置为指定颜色
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -128,11 +139,12 @@ int main()
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		// 绘制多个立方体
 		glm::mat4 model;// 模型变换矩阵
-		model = glm::scale(model, glm::vec3(0.8f, 0.8f, 0.8f));
+		model = glm::translate(model, glm::vec3(0.0f, -1.55f, -1.0f)); // 适当调整位置
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));// 适当缩小模型
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		
 		// 这里填写场景绘制代码
-		mesh.draw(shader); // 绘制物体
+		objModel.draw(shader); // 绘制物体
 
 		glBindVertexArray(0);
 		glUseProgram(0);
