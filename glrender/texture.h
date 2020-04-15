@@ -12,15 +12,17 @@ public:
 	/* 成功加载2D纹理则返回纹理对象Id 否则返回0
 	*/
 	static  GLint load2DTexture(const char* filename, GLint internalFormat = GL_RGB,
-		GLenum picFormat = GL_RGB, int loadChannels = SOIL_LOAD_RGB)
+		GLenum picFormat = GL_RGB, int loadChannels = SOIL_LOAD_RGB, GLboolean alpha = false)
 	{
 		// Step1 创建并绑定纹理对象
 		GLuint textureId = 0;
 		glGenTextures(1, &textureId);
 		glBindTexture(GL_TEXTURE_2D, textureId);
 		// Step2 设定wrap参数
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// 注意这里使用GL_CLAMP_TO_EDGE 避免边缘部分半透明的视觉bug
+		// 边缘部分半透明 是因为使用下次重复的纹理做插值导致的
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, alpha ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, alpha ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 		// Step3 设定filter参数
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
