@@ -30,5 +30,7 @@ float nonLinearDepth()
 void main()
 {
 	float depth = LinearizeDepth();
+	//float depth = asDepth();
+	//float depth = nonLinearDepth();
 	color = vec4(vec3(depth), 1.0f);
 }

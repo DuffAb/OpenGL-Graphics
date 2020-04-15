@@ -40,7 +40,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of depth testing", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of visualize depth value", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -170,7 +170,7 @@ int main()
 	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
 	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
 	// Section4 准备着色器程序
-	Shader shader("shader/depthTesting/DepthTesting/depthTest.vertex", "shader/depthTesting/DepthTesting/depthTest.frag");
+	Shader shader("shader/depthTesting/visualDepthValue/depthTest.vertex", "shader/depthTesting/visualDepthValue/depthTest.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE); // 如果要观察zFighting则要取消背面剔除
