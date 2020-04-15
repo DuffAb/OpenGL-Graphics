@@ -40,7 +40,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of outline(using stencil buffer)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Planar Reflection(using stencil buffer)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -169,10 +169,9 @@ int main()
 
 	// Section3 加载纹理
 	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
-	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
 	// Section4 准备着色器程序
-	Shader shader("shader/stencilTesting/objectOutline/stencilTest.vertex", "shader/stencilTesting/objectOutline/stencilTest.frag");
-	Shader outlineShader("shader/stencilTesting/objectOutline/singleColor.vertex", "shader/stencilTesting/objectOutline/singleColor.frag");
+	Shader shader("shader/stencilTesting/planarReflection/stencilTest.vertex", "shader/stencilTesting/planarReflection/stencilTest.frag");
+	Shader planeShader("shader/stencilTesting/planarReflection/singleColor.vertex", "shader/stencilTesting/planarReflection/singleColor.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
@@ -195,63 +194,78 @@ int main()
 		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
 		glm::mat4 model;
 
+		// section1 利用反射平面绘制模板
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		glDisable(GL_DEPTH_TEST);
+		glStencilMask(0xFF);	//开启模板写入
+		glStencilFunc(GL_ALWAYS, 1, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // 在模板测试和深度测试都通过时更新模板缓冲区
+
+		planeShader.use();
+		planeShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		planeShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		planeShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glBindVertexArray(planeVAOId);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		// section2 绘制反射部分
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
+		glStencilMask(0x00); // 禁止写入stencil
+		glStencilFunc(GL_EQUAL, 1, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+
 		shader.use();
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		outlineShader.use();
-		outlineShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		outlineShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-
-		// 绘制地板 这里不使用模板
-		shader.use();
-		glStencilMask(0x00);	//禁用模板
-		glBindVertexArray(planeVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, planeTextId);
-		model = glm::mat4();
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		// 绘制原始立方体 这里开启模板
-		shader.use();
-		glStencilMask(0xFF);	//开启模板
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);	//总是通过模板测试
 		glBindVertexArray(cubeVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubeTextId);
-		// 绘制第一个立方体
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		// 绘制第一个立方体反射
+		glm::mat4 firstReflectModel;
+		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(-1.0f, 0.0f, -1.0f));
+		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(0.0f, -0.5f, 0.0f));
+		firstReflectModel = glm::scale(firstReflectModel, glm::vec3(1.0f, -1.0f, 1.0f));
+		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(0.0f, 0.5f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(firstReflectModel));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// 绘制第二个立方体
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		// 绘制第二个立方体反射
+		glm::mat4 secondReflectModel;
+		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(2.0f, 0.0f, 0.0f));
+		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(0.0f, -0.5f, 0.0f));
+		secondReflectModel = glm::scale(secondReflectModel, glm::vec3(1.0f, -1.0f, 1.0f));
+		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(0.0f, 0.5f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(secondReflectModel));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		// 使用模板缓冲区 绘制立方体边缘
-		outlineShader.use();
-		glStencilMask(0x00); // 禁止写入模板缓冲区
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-		glDisable(GL_DEPTH_TEST); // 这里关闭深度测试 是为了让轮廓不因为处在前面的平面而被消去
-		const GLfloat scale = 1.1f;
+		glDisable(GL_STENCIL_TEST); // 绘制平面和原始立方体时关闭模板测试
+		// section3 绘制反射平面
+		planeShader.use();
+		glBindVertexArray(planeVAOId);
+		glEnable(GL_BLEND); // 为反射平面启用透明特性
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDisable(GL_BLEND);
+
+		// section4 绘制原始立方体
+		shader.use();
 		glBindVertexArray(cubeVAOId);
-		// 绘制第一个立方体轮廓
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-		model = glm::scale(model, glm::vec3(scale, scale, scale));
-		outlineShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36); // 这里的36是用于构成三角形的顶点个数 而不是三角形的个数12
-		// 绘制第二个立方体轮廓
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(scale, scale, scale));
-		outlineShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, cubeTextId);
+		// 绘制第一个原始立方体
+		glm::mat4 firstCubeModel;
+		firstCubeModel = glm::translate(firstCubeModel, glm::vec3(-1.0f, 0.0f, -1.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(firstCubeModel));
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// 绘制第二个原始立方体
+		glm::mat4 secondCubeModel;
+		secondCubeModel = glm::translate(secondCubeModel, glm::vec3(2.0f, 0.0f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(secondCubeModel));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		glEnable(GL_DEPTH_TEST);
-		glStencilMask(0xFF); // 注意这里要再次允许对模板缓冲进行写入，否则下次进入循环时无法清除模板缓冲
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0xFF);
 		glBindVertexArray(0);
 		glUseProgram(0);
 		glfwSwapBuffers(window); // 交换缓存
