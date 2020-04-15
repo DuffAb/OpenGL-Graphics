@@ -40,7 +40,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Planar Reflection(using stencil buffer)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of blending(complete transparency)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -129,14 +129,32 @@ int main()
 	};
 	// 地板顶点属性数据 顶点位置 纹理坐标(设置的值大于1.0用于重复)
 	GLfloat planeVertices[] = {
-		5.0f, -0.5f, 5.0f, 2.0f, 0.0f,   // A
-		5.0f, -0.5f, -5.0f, 2.0f, 2.0f,  // D
-		-5.0f, -0.5f, -5.0f, 0.0f, 2.0f, // C
+		5.0f, -0.51f, 5.0f, 2.0f, 0.0f,   // A //-0.51f可以避免zfighting
+		5.0f, -0.51f, -5.0f, 2.0f, 2.0f,  // D
+		-5.0f, -0.51f, -5.0f, 0.0f, 2.0f, // C
 
-		-5.0f, -0.5f, -5.0f, 0.0f, 2.0f, // C
-		-5.0f, -0.5f, 5.0f, 0.0f, 0.0f,  // B
-		5.0f, -0.5f, 5.0f, 2.0f, 0.0f,   // A
+		-5.0f, -0.51f, -5.0f, 0.0f, 2.0f, // C
+		-5.0f, -0.51f, 5.0f, 0.0f, 0.0f,  // B
+		5.0f, -0.51f, 5.0f, 2.0f, 0.0f,   // A
 	};
+	// 透明物体的顶点属性  位置 纹理坐标
+	GLfloat transparentVertices[] = {
+		// 翻转了纹理y坐标 以便正立显示纹理
+		0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+		0.0f, -0.5f, 0.0f, 0.0f, 1.0f,
+		1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
+
+		0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+		1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
+		1.0f, 0.5f, 0.0f, 1.0f, 0.0f
+	};
+	// 透明物体（植被）位置
+	std::vector<glm::vec3> vegetation;
+	vegetation.push_back(glm::vec3(-1.5f, 0.0f, -0.48f));
+	vegetation.push_back(glm::vec3(1.5f, 0.0f, 0.51f));
+	vegetation.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
+	vegetation.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
+	vegetation.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -167,16 +185,30 @@ int main()
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
+	GLuint transparentVAOId, transparentVBOId;
+	glGenVertexArrays(1, &transparentVAOId);
+	glGenBuffers(1, &transparentVBOId);
+	glBindVertexArray(transparentVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, transparentVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+	// 顶点位置数据
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	// 顶点纹理数据
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+
 	// Section3 加载纹理
 	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
+	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
+	GLuint transparentTextId = TextureHelper::load2DTexture("resources/textures/grass.png", GL_RGBA, GL_RGBA, SOIL_LOAD_RGBA, true);
 	// Section4 准备着色器程序
-	Shader shader("shader/stencilTesting/planarReflection/stencilTest.vertex", "shader/stencilTesting/planarReflection/stencilTest.frag");
-	Shader planeShader("shader/stencilTesting/planarReflection/singleColor.vertex", "shader/stencilTesting/planarReflection/singleColor.frag");
+	Shader shader("shader/blend/transparent/cube.vertex", "shader/blend/transparent/cube.frag");
+	Shader transparentShader("shader/blend/transparent/transparent.vertex", "shader/blend/transparent/transparent.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // 在模板测试和深度测试都通过时更新模板缓冲区
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
@@ -194,78 +226,50 @@ int main()
 		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
 		glm::mat4 model;
 
-		// section1 利用反射平面绘制模板
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glDisable(GL_DEPTH_TEST);
-		glStencilMask(0xFF);	//开启模板写入
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // 在模板测试和深度测试都通过时更新模板缓冲区
-
-		planeShader.use();
-		planeShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		planeShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		planeShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glBindVertexArray(planeVAOId);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		// section2 绘制反射部分
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		glEnable(GL_DEPTH_TEST);
-		glStencilMask(0x00); // 禁止写入stencil
-		glStencilFunc(GL_EQUAL, 1, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-
 		shader.use();
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		glBindVertexArray(cubeVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, cubeTextId);
-		// 绘制第一个立方体反射
-		glm::mat4 firstReflectModel;
-		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(-1.0f, 0.0f, -1.0f));
-		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(0.0f, -0.5f, 0.0f));
-		firstReflectModel = glm::scale(firstReflectModel, glm::vec3(1.0f, -1.0f, 1.0f));
-		firstReflectModel = glm::translate(firstReflectModel, glm::vec3(0.0f, 0.5f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(firstReflectModel));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// 绘制第二个立方体反射
-		glm::mat4 secondReflectModel;
-		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(2.0f, 0.0f, 0.0f));
-		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(0.0f, -0.5f, 0.0f));
-		secondReflectModel = glm::scale(secondReflectModel, glm::vec3(1.0f, -1.0f, 1.0f));
-		secondReflectModel = glm::translate(secondReflectModel, glm::vec3(0.0f, 0.5f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(secondReflectModel));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		glDisable(GL_STENCIL_TEST); // 绘制平面和原始立方体时关闭模板测试
-		// section3 绘制反射平面
-		planeShader.use();
-		glBindVertexArray(planeVAOId);
-		glEnable(GL_BLEND); // 为反射平面启用透明特性
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glDisable(GL_BLEND);
+		transparentShader.use();
+		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 
-		// section4 绘制原始立方体
 		shader.use();
 		glBindVertexArray(cubeVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubeTextId);
-		// 绘制第一个原始立方体
-		glm::mat4 firstCubeModel;
-		firstCubeModel = glm::translate(firstCubeModel, glm::vec3(-1.0f, 0.0f, -1.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(firstCubeModel));
+		// 绘制第一个立方体
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// 绘制第二个原始立方体
-		glm::mat4 secondCubeModel;
-		secondCubeModel = glm::translate(secondCubeModel, glm::vec3(2.0f, 0.0f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(secondCubeModel));
+		// 绘制第二个立方体反射
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		glEnable(GL_STENCIL_TEST);
-		glStencilMask(0xFF);
+		// 绘制平面
+		glBindVertexArray(planeVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, planeTextId);
+		model = glm::mat4();
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		// 绘制透明物体
+		transparentShader.use();
+		glBindVertexArray(transparentVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, transparentTextId);
+		for (std::vector<glm::vec3>::const_iterator it = vegetation.begin(); vegetation.end() != it; ++it)
+		{
+			model = glm::mat4();
+			model = glm::translate(model, *it);
+			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+		}
+
 		glBindVertexArray(0);
 		glUseProgram(0);
 		glfwSwapBuffers(window); // 交换缓存
@@ -276,6 +280,8 @@ int main()
 	glDeleteVertexArrays(1, &planeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
 	glDeleteBuffers(1, &planeVBOId);
+	glDeleteBuffers(1, &transparentVAOId);
+	glDeleteBuffers(1, &transparentVBOId);
 	glfwTerminate();
 	return 0;
 }
