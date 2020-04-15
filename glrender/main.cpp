@@ -40,7 +40,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of loading model with AssImp", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of depth testing", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -81,21 +81,100 @@ int main()
 	// 设置视口参数
 	glViewport(0, 0, width, height);
 
-	//Section1 加载模型数据 为了方便更换模型 我们从文件读取模型文件路径
-	Model objModel;
-	if (!objModel.loadModel("resources/models/nanosuit/nanosuit.obj"))
-	{
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
+	//Section1 顶点属性数据
+	// 指定立方体顶点属性数据 顶点位置 纹理
+	GLfloat cubeVertices[] = {
+		-0.5f, -0.5f, 0.5f, 0.0f, 0.0f,	// A
+		0.5f, -0.5f, 0.5f, 1.0f, 0.0f,	// B
+		0.5f, 0.5f, 0.5f,1.0f, 1.0f,	// C
+		0.5f, 0.5f, 0.5f,1.0f, 1.0f,	// C
+		-0.5f, 0.5f, 0.5f,0.0f, 1.0f,	// D
+		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
 
-	// Section2 准备着色器程序
-	Shader shader("shader/modelLoading/AssImpWithLight/model.vertex", "shader/modelLoading/AssImpWithLight/model.frag");
-				
-	//开启深度测试
+
+		-0.5f, -0.5f, -0.5f,0.0f, 0.0f,	// E
+		-0.5f, 0.5f, -0.5f,0.0, 1.0f,   // H
+		0.5f, 0.5f, -0.5f,1.0f, 1.0f,	// G
+		0.5f, 0.5f, -0.5f,1.0f, 1.0f,	// G
+		0.5f, -0.5f, -0.5f,1.0f, 0.0f,	// F
+		-0.5f, -0.5f, -0.5f,0.0f, 0.0f,	// E
+
+		-0.5f, 0.5f, 0.5f,0.0f, 1.0f,	// D
+		-0.5f, 0.5f, -0.5f,1.0, 1.0f,   // H
+		-0.5f, -0.5f, -0.5f,1.0f, 0.0f,	// E
+		-0.5f, -0.5f, -0.5f,1.0f, 0.0f,	// E
+		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
+		-0.5f, 0.5f, 0.5f,0.0f, 1.0f,	// D
+
+		0.5f, -0.5f, -0.5f,1.0f, 0.0f,	// F
+		0.5f, 0.5f, -0.5f,1.0f, 1.0f,	// G
+		0.5f, 0.5f, 0.5f,0.0f, 1.0f,	// C
+		0.5f, 0.5f, 0.5f,0.0f, 1.0f,	// C
+		0.5f, -0.5f, 0.5f, 0.0f, 0.0f,	// B
+		0.5f, -0.5f, -0.5f,1.0f, 0.0f,	// F
+
+		0.5f, 0.5f, -0.5f,1.0f, 1.0f,	// G
+		-0.5f, 0.5f, -0.5f,0.0, 1.0f,   // H
+		-0.5f, 0.5f, 0.5f,0.0f, 0.0f,	// D
+		-0.5f, 0.5f, 0.5f,0.0f, 0.0f,	// D
+		0.5f, 0.5f, 0.5f,1.0f, 0.0f,	// C
+		0.5f, 0.5f, -0.5f,1.0f, 1.0f,	// G
+
+		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
+		-0.5f, -0.5f, -0.5f, 0.0f, 1.0f,// E
+		0.5f, -0.5f, -0.5f,1.0f, 1.0f,	// F
+		0.5f, -0.5f, -0.5f,1.0f, 1.0f,	// F
+		0.5f, -0.5f, 0.5f,1.0f, 0.0f,	// B
+		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
+	};
+	// 地板顶点属性数据 顶点位置 纹理坐标(设置的值大于1.0用于重复)
+	GLfloat planeVertices[] = {
+		5.0f, -0.5f, 5.0f, 2.0f, 0.0f,   // A
+		5.0f, -0.5f, -5.0f, 2.0f, 2.0f,  // D
+		-5.0f, -0.5f, -5.0f, 0.0f, 2.0f, // C
+
+		-5.0f, -0.5f, -5.0f, 0.0f, 2.0f, // C
+		-5.0f, -0.5f, 5.0f, 0.0f, 0.0f,  // B
+		5.0f, -0.5f, 5.0f, 2.0f, 0.0f,   // A
+	};
+	// Section2 准备缓存对象
+	GLuint cubeVAOId, cubeVBOId;
+	glGenVertexArrays(1, &cubeVAOId);
+	glGenBuffers(1, &cubeVBOId);
+	glBindVertexArray(cubeVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, cubeVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+	// 顶点位置数据
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	// 顶点纹理数据
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+
+	GLuint planeVAOId, planeVBOId;
+	glGenVertexArrays(1, &planeVAOId);
+	glGenBuffers(1, &planeVBOId);
+	glBindVertexArray(planeVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+	// 顶点位置数据
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	// 顶点纹理数据
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+
+	// Section3 加载纹理
+	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
+	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
+	// Section4 准备着色器程序
+	Shader shader("shader/depthTesting/DepthTesting/depthTest.vertex", "shader/depthTesting/DepthTesting/depthTest.frag");
+
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE); // 如果要观察zFighting则要取消背面剔除
+	glDepthFunc(GL_ALWAYS);
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
@@ -110,36 +189,44 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shader.use();
-		// 设置光源属性 点光源
-		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
-		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
-		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
-		// 设置衰减系数
-		shader.updateUniform1f("light.constant", 1.0f);
-		shader.updateUniform1f("light.linear", 0.09f);
-		shader.updateUniform1f("light.quadratic", 0.032f);
-		// 设置观察者位置
-		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
-		// 投影矩阵
-		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 1.0f, 100.0f);
-		// 视变换矩阵
-		glm::mat4 view = camera.getViewMatrix();
+
+		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 1.0f, 100.0f); // 投影矩阵
+		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		glm::mat4 model;
-		model = glm::translate(model, glm::vec3(0.0f, -1.55f, 0.0f)); // 适当下调位置
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f)); // 适当缩小模型
+
+		glBindVertexArray(cubeVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, cubeTextId);
+		// 绘制第一个立方体
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		// 这里填写场景绘制代码
-		objModel.draw(shader); // 绘制物体
+		glDrawArrays(GL_TRIANGLES, 0, 36); // 这里的36是用于构成三角形的顶点个数 而不是三角形的个数12
+		// 绘制第二个立方体
+		model = glm::mat4();
+		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		// 绘制平面
+		glBindVertexArray(planeVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, planeTextId);
+		model = glm::mat4();
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
 		glfwSwapBuffers(window); // 交换缓存
 	}
 
-	// Terminate GLFW, clearing any resources allocated by GLFW.
+	// 释放资源
+	glDeleteVertexArrays(1, &cubeVAOId);
+	glDeleteVertexArrays(1, &planeVAOId);
+	glDeleteBuffers(1, &cubeVBOId);
+	glDeleteBuffers(1, &planeVBOId);
 	glfwTerminate();
 	return 0;
 }
