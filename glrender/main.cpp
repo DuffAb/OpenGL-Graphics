@@ -153,10 +153,10 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// 顶点颜色属性
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,	8 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,	8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 	// 顶点纹理坐标
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,	8 * sizeof(GL_FLOAT), (GLvoid*)(5 * sizeof(GL_FLOAT)));
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,	8 * sizeof(GLfloat), (GLvoid*)(5 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(2);
 	// 解除绑定，防止后续操作干扰到了当前VAO和VBO
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -167,7 +167,7 @@ int main()
 	glGenVertexArrays(1, &lampVAOId);
 	glBindVertexArray(lampVAOId);
 	glBindBuffer(GL_ARRAY_BUFFER, VBOId); // 重用上面的数据，无需重复发送顶点数据，仍然需要指定解析方式
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0); // 只需要顶点位置即可
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
@@ -207,7 +207,7 @@ int main()
 		shader.use();
 
 		// 投影变换矩阵
-		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 1.0f, 100.0f);
+		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 0.01f, 100.0f);
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
 		
@@ -225,10 +225,10 @@ int main()
 		shader.updateUniform1f("light.quadratic", 0.032f);	// 衰减二次系数
 		
 		// 设置材料光照属性
-		// 启用diffuseMap
+		// 启用diffuseMap，漫反射贴图
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, diffuseMap);
-		// 启用specularMap
+		// 启用specularMap，高光贴图
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, specularMap);
 		shader.updateUniform1f("material.shininess", 32.0f);//镜面高光系数
