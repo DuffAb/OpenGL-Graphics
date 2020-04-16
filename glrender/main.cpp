@@ -269,8 +269,9 @@ int main()
 		glBindVertexArray(transparentVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, transparentTextId);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		glEnable(GL_BLEND);//开启混色
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//设置混色方式为 Result=source∗sfactor+destination∗dfactor
 		// 根据transparency sort 结果进行绘制
 		for (std::map<GLfloat, glm::vec3>::reverse_iterator it = distanceMap.rbegin(); distanceMap.rend() != it; ++it)
 		{
@@ -279,7 +280,7 @@ int main()
 			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
-		glDisable(GL_BLEND);
+		glDisable(GL_BLEND);//关闭混色
 
 		glBindVertexArray(0);
 		glUseProgram(0);
