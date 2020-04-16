@@ -35,7 +35,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of spot lighting(soft edge)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Blinn-Phong lighting(Press B to change model)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -77,116 +77,44 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Section1 准备顶点数据
-	// 指定顶点属性数据 顶点位置 纹理 法向量
-	GLfloat vertices[] = {
-		-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// A
-		 0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// B
-		 0.5f,  0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,	// C
-		 0.5f,  0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,	// C
-		-0.5f,  0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,	// D
-		-0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,	// A
+	// 指定顶点属性数据 顶点位置 法向量 纹理
+	GLfloat planeVertices[] = {
+		8.0f, -0.5f, 8.0f, 0.0f, 1.0f, 0.0f, 5.0f, 0.0f,
+		-8.0f, -0.5f, 8.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+		-8.0f, -0.5f, -8.0f, 0.0f, 1.0f, 0.0f, 0.0f, 5.0f,
 
-
-		-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,	// E
-		-0.5f,  0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f, // H
-		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,	// G
-		 0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,	// G
-		 0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f,	// F
-		-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,	// E
-
-		-0.5f,  0.5f,  0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,	// D
-		-0.5f,  0.5f, -0.5f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f, // H
-		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,	// E
-		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,	// E
-		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,	// A
-		-0.5f,  0.5f,  0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,	// D
-
-		0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, // F
-		0.5f,  0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, // G
-		0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, // C
-		0.5f,  0.5f,  0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, // C
-		0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // B
-		0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, // F
-
-		 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// G
-		-0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,   // H
-		-0.5f, 0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,	// D
-		-0.5f, 0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,	// D
-		 0.5f, 0.5f,  0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,	// C
-		 0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,	// G
-
-		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,  // A
-		-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,  // E
-		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,  // F
-		 0.5f, -0.5f, -0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,  // F
-		 0.5f, -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,  // B
-		-0.5f, -0.5f,  0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,  // A
+		8.0f, -0.5f, 8.0f, 0.0f, 1.0f, 0.0f, 5.0f, 0.0f,
+		-8.0f, -0.5f, -8.0f, 0.0f, 1.0f, 0.0f, 0.0f, 5.0f,
+		8.0f, -0.5f, -8.0f, 0.0f, 1.0f, 0.0f, 5.0f, 5.0f
 	};
 
-	glm::vec3 cubePositions[] = {
-		glm::vec3( 0.0f,  0.0f,  0.0f),
-		glm::vec3( 2.0f,  5.0f, -15.0f),
-		glm::vec3(-1.5f, -2.2f, -2.5f),
-		glm::vec3(-3.8f, -2.0f, -12.3f),
-		glm::vec3( 2.4f, -0.4f, -3.5f),
-		glm::vec3(-1.7f,  3.0f, -7.5f),
-		glm::vec3( 1.3f, -2.0f, -2.5f),
-		glm::vec3( 1.5f,  2.0f, -2.5f),
-		glm::vec3( 1.5f,  0.2f, -1.5f),
-		glm::vec3(-1.3f,  1.0f, -1.5f)
-	};
-
-	// 创建缓存对象
-	GLuint VAOId, VBOId;
-	// 1.创建并绑定VAO对象
-	glGenVertexArrays(1, &VAOId);
-	glBindVertexArray(VAOId);
-	
-	// 2.创建并绑定VBO对象
-	glGenBuffers(1, &VBOId);
-	glBindBuffer(GL_ARRAY_BUFFER, VBOId);
-	// 分配空间，传送顶点数据
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	// 3.指定解析方式，并启用顶点属性
+	// 创建物体缓存对象
+	GLuint planeVAOId, planeVBOId;
+	// Step1: 创建并绑定VAO对象
+	glGenVertexArrays(1, &planeVAOId);
+	glBindVertexArray(planeVAOId);
+	// Step2: 创建并绑定VBO 对象 传送数据
+	glGenBuffers(1, &planeVBOId);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+	// Step3: 指定解析方式  并启用顶点属性
 	// 顶点位置属性
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// 顶点颜色属性
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,	8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	// 顶点法向量属性
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 	// 顶点纹理坐标
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,	8 * sizeof(GLfloat), (GLvoid*)(5 * sizeof(GLfloat)));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(2);
-	// 解除绑定，防止后续操作干扰到了当前VAO和VBO
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-
-	// 创建光源的VAO
-	GLuint lampVAOId;
-	glGenVertexArrays(1, &lampVAOId);
-	glBindVertexArray(lampVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, VBOId); // 重用上面的数据，无需重复发送顶点数据，仍然需要指定解析方式
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0); // 只需要顶点位置即可
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-
 
 	// 第二部分：准备着色器程序
-	Shader shader("shader/lighting/spotLight-soft-edge/cube.vertex", "shader/lighting/spotLight-soft-edge/cube.frag");
-	Shader lampShader("shader/lighting/spotLight-soft-edge/lamp.vertex", "shader/lighting/spotLight-soft-edge/lamp.frag");
+	Shader shader("shader/lighting/BlinnPhongLighting/scene.vertex", "shader/lighting/BlinnPhongLighting/scene.frag");
 
-	// Uncommenting this call will result in wireframe polygons.
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//填充绘制
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	//用线来绘制
+	GLint planeTextId = TextureHelper::load2DTexture("resources/textures/wood.png");
 
-	GLint diffuseMap = TextureHelper::load2DTexture("resources/textures/container_diffuse.png");
-	GLint specularMap = TextureHelper::load2DTexture("resources/textures/container_specular.png");
-	shader.use();
-	shader.updateUniform1i("material.diffuseMap", 0);
-	shader.updateUniform1i("material.specularMap", 1);
-	
 	//开启深度测试
 	glEnable(GL_DEPTH_TEST);
 	// 开始游戏主循环
@@ -201,64 +129,39 @@ int main()
 		// 清除颜色缓冲区 重置为指定颜色
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// 这里填写场景绘制代码
-		glBindVertexArray(VAOId);
-		shader.use();
-
 		// 投影变换矩阵
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / width, 0.01f, 100.0f);
 		// 视变换矩阵
 		glm::mat4 view = camera.getViewMatrix();
-		
+		glm::mat4 model;// 模型变换矩阵
+
+		shader.use();
+
 		// 设置光源属性  FlashLight光源
 		shader.updateUniform3f("light.ambient", 0.2f, 0.2f, 0.2f);
 		shader.updateUniform3f("light.diffuse", 0.5f, 0.5f, 0.5f);
 		shader.updateUniform3f("light.specular", 1.0f, 1.0f, 1.0f);
-		shader.updateUniform3f("light.position", camera.position.x, camera.position.y, camera.position.z);
+		shader.updateUniform3f("light.position", lampPos.x, lampPos.y, lampPos.z);
 		shader.updateUniform3f("light.direction", camera.forward.x, camera.forward.y, camera.forward.z);
 		shader.updateUniform1f("light.cutoff", cos(glm::radians(12.5f)));
 		shader.updateUniform1f("light.outerCutoff", cos(glm::radians(17.5f)));
-		// 设置衰减系数
-		shader.updateUniform1f("light.constant", 1.0f);		// 衰减常数
-		shader.updateUniform1f("light.linear", 0.09f);		// 衰减一次系数
-		shader.updateUniform1f("light.quadratic", 0.032f);	// 衰减二次系数
 		
-		// 设置材料光照属性
-		// 启用diffuseMap，漫反射贴图
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, diffuseMap);
-		// 启用specularMap，高光贴图
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, specularMap);
-		shader.updateUniform1f("material.shininess", 32.0f);//镜面高光系数
 		// 设置观察者位置
 		shader.updateUniform3f("viewPos", camera.position.x, camera.position.y, camera.position.z);
 		// 设置变换矩阵
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		// 绘制多个立方体
-		glm::mat4 model;// 模型变换矩阵
-		for (int i = 0; i < sizeof(cubePositions) / sizeof(cubePositions[0]); ++i)
-		{
-			model = glm::mat4();
-			model = glm::translate(model, cubePositions[i]);
-			GLfloat angle = 20.0f * i;
-			model = glm::rotate(model, angle, glm::vec3(1.0f, 0.3f, 0.5f));
-			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-		
-		// 光源位置即观察者位置 不用绘制模拟的光源
-		/*glBindVertexArray(lampVAOId);
-		lampShader.use();
-		lampShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		lampShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		model = glm::mat4();
-		model = glm::translate(model, lampPos);
-		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f));
-		lampShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);*/
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		shader.updateUniform1i("blinn", bUseBlinn);
+		// 绘制平面
+		// 这里填写场景绘制代码
+		glBindVertexArray(planeVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, planeTextId);
+		shader.updateUniform1i("text", 0);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		std::cout << "using Blinn-Phong " << (bUseBlinn ? "true" : "false") << std::endl;
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -266,10 +169,8 @@ int main()
 	}
 
 	// 释放资源
-	glDeleteVertexArrays(1, &VAOId);
-	glDeleteBuffers(1, &VBOId);
-	glDeleteVertexArrays(1, &lampVAOId);
-	// Terminate GLFW, clearing any resources allocated by GLFW.
+	glDeleteVertexArrays(1, &planeVAOId);
+	glDeleteBuffers(1, &planeVBOId);
 	glfwTerminate();
 	return 0;
 }

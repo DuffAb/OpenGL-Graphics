@@ -20,6 +20,7 @@ GLfloat lastFrame = 0.0f; // 上一帧时间
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 glm::vec3 lampPos(1.2f, 1.0f, 2.0f);
+GLboolean bUseBlinn = true;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -43,7 +44,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, GL_TRUE); // 关闭窗口
-	}	
+	}
+	if (key == GLFW_KEY_B && action == GLFW_PRESS)
+	{
+		bUseBlinn = !bUseBlinn;
+	}
 }
 
 // 键盘回调函数原型声明
