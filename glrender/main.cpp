@@ -149,12 +149,12 @@ int main()
 		1.0f, 0.5f, 0.0f, 1.0f, 0.0f
 	};
 	// 透明物体（植被）位置
-	std::vector<glm::vec3> vegetation;
-	vegetation.push_back(glm::vec3(-1.5f, 0.0f, -0.48f));
-	vegetation.push_back(glm::vec3(1.5f, 0.0f, 0.51f));
-	vegetation.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
-	vegetation.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
-	vegetation.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
+	std::vector<glm::vec3> windowObjs;
+	windowObjs.push_back(glm::vec3(-1.5f, 0.0f, -0.48f));
+	windowObjs.push_back(glm::vec3(1.5f, 0.0f, 0.51f));
+	windowObjs.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
+	windowObjs.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
+	windowObjs.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -202,10 +202,10 @@ int main()
 	// Section3 加载纹理
 	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
 	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
-	GLuint transparentTextId = TextureHelper::load2DTexture("resources/textures/grass.png", GL_RGBA, GL_RGBA, SOIL_LOAD_RGBA, true);
+	GLuint transparentTextId = TextureHelper::load2DTexture("resources/textures/window.png", GL_RGBA, GL_RGBA, SOIL_LOAD_RGBA, true);
 	// Section4 准备着色器程序
-	Shader shader("shader/blend/transparent/cube.vertex", "shader/blend/transparent/cube.frag");
-	Shader transparentShader("shader/blend/transparent/transparent.vertex", "shader/blend/transparent/transparent.frag");
+	Shader shader("shader/blend/semi-transparent/cube.vertex", "shader/blend/semi-transparent/cube.frag");
+	Shader transparentShader("shader/blend/semi-transparent/transparent.vertex", "shader/blend/semi-transparent/transparent.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
@@ -258,17 +258,28 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		// 绘制透明物体
+		// 根据到观察者距离远近排序 使用map的键的默认排序功能(键为整数时从小到大)
+		std::map<GLfloat, glm::vec3> distanceMap;
+		for (std::vector<glm::vec3>::const_iterator it = windowObjs.begin(); windowObjs.end() != it; ++it)
+		{
+			float distance = glm::distance(camera.position, *it);
+			distanceMap[distance] = *it;
+		}
 		transparentShader.use();
 		glBindVertexArray(transparentVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, transparentTextId);
-		for (std::vector<glm::vec3>::const_iterator it = vegetation.begin(); vegetation.end() != it; ++it)
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		// 根据transparency sort 结果进行绘制
+		for (std::map<GLfloat, glm::vec3>::reverse_iterator it = distanceMap.rbegin(); distanceMap.rend() != it; ++it)
 		{
 			model = glm::mat4();
-			model = glm::translate(model, *it);
+			model = glm::translate(model, it->second);
 			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
+		glDisable(GL_BLEND);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
