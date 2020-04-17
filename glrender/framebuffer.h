@@ -33,15 +33,15 @@ public:
 	/*
 	* 附加纹理到Color Attachment 同时附加RBO到depth stencil Attachment
 	*/
-	static bool prepareColorRenderFBO(GLsizei width, GLsizei height, GLuint& textId, GLuint& fboId)
+	static bool prepareColorRenderFBO(GLsizei width, GLsizei height, GLuint& colorTextId, GLuint& rboId, GLuint& fboId)
 	{
 		glGenFramebuffers(1, &fboId);
 		glBindFramebuffer(GL_FRAMEBUFFER, fboId);
 		// 附加 color attachment
-		textId = TextureHelper::makeAttachmentTexture(0, GL_RGB, width, height, GL_RGB, GL_UNSIGNED_BYTE); // 创建FBO中的纹理
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textId, 0);
+		colorTextId = TextureHelper::makeAttachmentTexture(0, GL_RGB, width, height, GL_RGB, GL_UNSIGNED_BYTE); // 创建FBO中的纹理
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextId, 0);
+		
 		// 附加 depth stencil RBO attachment
-		GLuint rboId;
 		glGenRenderbuffers(1, &rboId);
 		glBindRenderbuffer(GL_RENDERBUFFER, rboId);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height); // 预分配内存

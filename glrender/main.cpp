@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of FBO(basic)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of FBO(PostProcessing)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -196,12 +196,13 @@ int main()
 	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
 
 	// Section4 准备着色器程序
-	Shader shader("shader/frameBufferObject/renderToTexture/scene.vertex", "shader/frameBufferObject/renderToTexture/scene.frag");
-	Shader quadShader("shader/frameBufferObject/renderToTexture/quad.vertex", "shader/frameBufferObject/renderToTexture/quad.frag");
+	Shader shader("shader/frameBufferObject/postProcess/scene.vertex", "shader/frameBufferObject/postProcess/scene.frag");
+	Shader quadShader("shader/frameBufferObject/postProcess/quad.vertex", "shader/frameBufferObject/postProcess/quad.frag");
 
 	// Section5 创建FBO
-	GLuint fboId, colorTextId, depthStencilTextId;
-	if (!FramebufferHelper::prepareColorDeptStencilFBO(width, height, colorTextId, depthStencilTextId, fboId))
+	GLuint fboId, colorTextId, rboId;
+	//if (!FramebufferHelper::prepareColorDeptStencilFBO(width, height, colorTextId, rboId, fboId)) //这创建的framebuffer效果没差别
+	if (!FramebufferHelper::prepareColorRenderFBO(width, height, colorTextId, rboId, fboId))
 	{
 		std::cout << "Error::FBO :" << " not complete." << std::endl;
 		glfwTerminate();
