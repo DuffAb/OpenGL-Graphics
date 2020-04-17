@@ -18,9 +18,8 @@
 #include "math.h"
 // 加载模型的类
 #include "model.h"
-
-// 准备光源
-void setupLights(Shader& shader, glm::vec3* PointLightPositions, int pointLightCnt);
+// 准备framebuffer的类
+#include "framebuffer.h"
 
 int main()
 {
@@ -40,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of blending(complete transparency)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of FBO(basic)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -137,24 +136,17 @@ int main()
 		-5.0f, -0.51f, 5.0f, 0.0f, 0.0f,  // B
 		5.0f, -0.51f, 5.0f, 2.0f, 0.0f,   // A
 	};
-	// 透明物体的顶点属性  位置 纹理坐标
-	GLfloat transparentVertices[] = {
-		// 翻转了纹理y坐标 以便正立显示纹理
-		0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-		0.0f, -0.5f, 0.0f, 0.0f, 1.0f,
-		1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
+	// 用于绘制FBO纹理的矩形顶点属性数据
+	GLfloat quadVertices[] = {
+		// 位置 纹理坐标
+		-1.0f, 1.0f, 0.0f, 1.0f,
+		-1.0f, -1.0f, 0.0f, 0.0f,
+		1.0f, -1.0f, 1.0f, 0.0f,
 
-		0.0f, 0.5f, 0.0f, 0.0f, 0.0f,
-		1.0f, -0.5f, 0.0f, 1.0f, 1.0f,
-		1.0f, 0.5f, 0.0f, 1.0f, 0.0f
+		-1.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, -1.0f, 1.0f, 0.0f,
+		1.0f, 1.0f, 1.0f, 1.0f
 	};
-	// 透明物体（植被）位置
-	std::vector<glm::vec3> windowObjs;
-	windowObjs.push_back(glm::vec3(-1.5f, 0.0f, -0.48f));
-	windowObjs.push_back(glm::vec3(1.5f, 0.0f, 0.51f));
-	windowObjs.push_back(glm::vec3(0.0f, 0.0f, 0.7f));
-	windowObjs.push_back(glm::vec3(-0.3f, 0.0f, -2.3f));
-	windowObjs.push_back(glm::vec3(0.5f, 0.0f, -0.6f));
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -164,10 +156,10 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, cubeVBOId);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
 	// 顶点位置数据
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
@@ -178,37 +170,46 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, planeVBOId);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
 	// 顶点位置数据
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
-	GLuint transparentVAOId, transparentVBOId;
-	glGenVertexArrays(1, &transparentVAOId);
-	glGenBuffers(1, &transparentVBOId);
-	glBindVertexArray(transparentVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, transparentVBOId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
+	GLuint quadVAOId, quadVBOId;
+	glGenVertexArrays(1, &quadVAOId);
+	glGenBuffers(1, &quadVBOId);
+	glBindVertexArray(quadVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
 	// 顶点位置数据
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GL_FLOAT), (GLvoid*)(3 * sizeof(GL_FLOAT)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
 	// Section3 加载纹理
-	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
+	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/container.jpg");
 	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
-	GLuint transparentTextId = TextureHelper::load2DTexture("resources/textures/window.png", GL_RGBA, GL_RGBA, SOIL_LOAD_RGBA, true);
-	// Section4 准备着色器程序
-	Shader shader("shader/blend/semi-transparent/cube.vertex", "shader/blend/semi-transparent/cube.frag");
-	Shader transparentShader("shader/blend/semi-transparent/transparent.vertex", "shader/blend/semi-transparent/transparent.frag");
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
+	// Section4 准备着色器程序
+	Shader shader("shader/frameBufferObject/renderToTexture/scene.vertex", "shader/frameBufferObject/renderToTexture/scene.frag");
+	Shader quadShader("shader/frameBufferObject/renderToTexture/quad.vertex", "shader/frameBufferObject/renderToTexture/quad.frag");
+
+	// Section5 创建FBO
+	GLuint fboId, colorTextId, depthStencilTextId;
+	if (!FramebufferHelper::prepareColorDeptStencilFBO(width, height, colorTextId, depthStencilTextId, fboId))
+	{
+		std::cout << "Error::FBO :" << " not complete." << std::endl;
+		glfwTerminate();
+		std::system("pause");
+		return -1;
+	}
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // 使用线框模式绘制
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
@@ -219,8 +220,8 @@ int main()
 		do_movement();		// 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 深度缓冲区 模板缓冲区
-		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		/*glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);*/
 
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 0.01f, 100.0f); // 投影矩阵
 		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
@@ -230,14 +231,18 @@ int main()
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 
-		transparentShader.use();
-		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-
-		shader.use();
+		// 启用用户自定义的FBO
+		glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+		//glEnable(GL_CULL_FACE);	//打开这个看不到立方体内部
+		// 清除颜色缓冲区 重置为指定颜色
+		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glBindVertexArray(cubeVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubeTextId);
+
 		// 绘制第一个立方体
 		model = glm::mat4();
 		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
@@ -257,29 +262,17 @@ int main()
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
-		// 绘制透明物体
-		// 根据到观察者距离远近排序 使用map的键的默认排序功能(键为整数时从小到大)
-		std::map<GLfloat, glm::vec3> distanceMap;
-		for (std::vector<glm::vec3>::const_iterator it = windowObjs.begin(); windowObjs.end() != it; ++it)
-		{
-			float distance = glm::distance(camera.position, *it);
-			distanceMap[distance] = *it;
-		}
-		transparentShader.use();
-		glBindVertexArray(transparentVAOId);
+		// 恢复默认FBO	在矩形上绘制FBO的纹理
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDisable(GL_DEPTH_TEST);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		
+		quadShader.use();
+		glBindVertexArray(quadVAOId);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, transparentTextId);
-		glEnable(GL_BLEND);//开启混色
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//设置混色方式为 Result=source∗sfactor+destination∗dfactor
-		// 根据transparency sort 结果进行绘制
-		for (std::map<GLfloat, glm::vec3>::reverse_iterator it = distanceMap.rbegin(); distanceMap.rend() != it; ++it)
-		{
-			model = glm::mat4();
-			model = glm::translate(model, it->second);
-			shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-			glDrawArrays(GL_TRIANGLES, 0, 6);
-		}
-		glDisable(GL_BLEND);//关闭混色
+		glBindTexture(GL_TEXTURE_2D, colorTextId); // 像使用普通纹理一样需要绑定
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -291,8 +284,6 @@ int main()
 	glDeleteVertexArrays(1, &planeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
 	glDeleteBuffers(1, &planeVBOId);
-	glDeleteBuffers(1, &transparentVAOId);
-	glDeleteBuffers(1, &transparentVBOId);
 	glfwTerminate();
 	return 0;
 }
