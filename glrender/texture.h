@@ -36,8 +36,7 @@ public:
 			std::cerr << "Error::Texture could not load texture file:" << filename << std::endl;
 			return 0;
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, picWidth, picHeight,
-			0, picFormat, GL_UNSIGNED_BYTE, imageData);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, picWidth, picHeight, 0, picFormat, GL_UNSIGNED_BYTE, imageData);
 
 		//为当前绑定的纹理自动生成所有需要的多级渐远纹理
 		glGenerateMipmap(GL_TEXTURE_2D);
@@ -45,6 +44,23 @@ public:
 		SOIL_free_image_data(imageData);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		return textureId;
+	}
+
+	/*
+	* 创建 framebuffer-attachable texture （纹理附加图像）
+	*/
+	static GLuint makeAttachmentTexture(GLint level = 0, GLint internalFormat = GL_DEPTH24_STENCIL8,
+		GLsizei width = 800, GLsizei height = 600, GLenum picFormat = GL_DEPTH_STENCIL,
+		GLenum picDataType = GL_UNSIGNED_INT_24_8)
+	{
+		GLuint textId;
+		glGenTextures(1, &textId);
+		glBindTexture(GL_TEXTURE_2D, textId);
+		glTexImage2D(GL_TEXTURE_2D, level, internalFormat, width, height, 0, picFormat, picDataType, NULL); // 预分配空间
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		return textId;
 	}
 
 #define FOURCC_DXT1 0x31545844 // Equivalent to "DXT1" in ASCII
