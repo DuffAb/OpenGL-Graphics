@@ -78,6 +78,7 @@ void mouse_move_callback(GLFWwindow* window, double xpos, double ypos)
 
 	GLfloat xoffset = xpos - lastX;
 	GLfloat yoffset = lastY - ypos;
+	//GLfloat yoffset = ypos - lastY; //鼠标上下移动，画面反走
 
 	lastX = xpos;
 	lastY = ypos;

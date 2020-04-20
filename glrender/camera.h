@@ -89,17 +89,19 @@ public:
 	// 使pitch yaw角度保持在合理范围内
 	void normalizeAngle()
 	{
+		//pitchAngle，y方向的偏移
 		if (this->pitchAngle > MAX_PITCH_ANGLE)
 			this->pitchAngle = MAX_PITCH_ANGLE;
 		if (this->pitchAngle < -MAX_PITCH_ANGLE)
 			this->pitchAngle = -MAX_PITCH_ANGLE;
+		//yawAngle，x方向的偏移
 		if (this->yawAngle < 0.0f)
 			this->yawAngle += 360.0f;
 	}
 	// 计算forward side向量
 	void updateCameraVectors()
 	{
-		//yawAngle：绕y轴旋转，pitchAngle：绕x轴旋转
+		//yawAngle：绕y轴旋转，即x方向的偏移，pitchAngle：绕x轴旋转，即y方向的偏移
 		glm::vec3 forward;
 		forward.x = cos(glm::radians(this->pitchAngle)) * cos(glm::radians(this->yawAngle));
 		forward.y = sin(glm::radians(this->pitchAngle));
