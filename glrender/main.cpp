@@ -126,27 +126,6 @@ int main()
 		0.5f, -0.5f, 0.5f,1.0f, 0.0f,	// B
 		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
 	};
-	// 地板顶点属性数据 顶点位置 纹理坐标(设置的值大于1.0用于重复)
-	GLfloat planeVertices[] = {
-		5.0f, -0.51f, 5.0f, 2.0f, 0.0f,   // A //-0.51f可以避免zfighting
-		5.0f, -0.51f, -5.0f, 2.0f, 2.0f,  // D
-		-5.0f, -0.51f, -5.0f, 0.0f, 2.0f, // C
-
-		-5.0f, -0.51f, -5.0f, 0.0f, 2.0f, // C
-		-5.0f, -0.51f, 5.0f, 0.0f, 0.0f,  // B
-		5.0f, -0.51f, 5.0f, 2.0f, 0.0f,   // A
-	};
-	// 用于绘制FBO纹理的矩形顶点属性数据
-	GLfloat quadVertices[] = {
-		// 位置 纹理坐标
-		-1.0f, 1.0f, 0.0f, 1.0f,
-		-1.0f, -1.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, 1.0f, 0.0f,
-
-		-1.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, -1.0f, 1.0f, 0.0f,
-		1.0f, 1.0f, 1.0f, 1.0f
-	};
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -163,54 +142,25 @@ int main()
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
-	GLuint planeVAOId, planeVBOId;
-	glGenVertexArrays(1, &planeVAOId);
-	glGenBuffers(1, &planeVBOId);
-	glBindVertexArray(planeVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, planeVBOId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
-	// 顶点位置数据
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-	glBindVertexArray(0);
-
-	GLuint quadVAOId, quadVBOId;
-	glGenVertexArrays(1, &quadVAOId);
-	glGenBuffers(1, &quadVBOId);
-	glBindVertexArray(quadVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-	// 顶点位置数据
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-	glBindVertexArray(0);
-
 	// Section3 加载纹理
-	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/container.jpg");
-	GLuint planeTextId = TextureHelper::load2DTexture("resources/textures/metal.png");
+	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
 
 	// Section4 准备着色器程序
-	Shader shader("shader/frameBufferObject/postProcess/scene.vertex", "shader/frameBufferObject/postProcess/scene.frag");
-	Shader quadShader("shader/frameBufferObject/postProcess/quad.vertex", "shader/frameBufferObject/postProcess/quad.frag");
+	Shader shader("shader/faceCulling/cube.vertex", "shader/faceCulling/cube.frag");
 
-	// Section5 创建FBO
-	GLuint fboId, colorTextId, rboId;
-	//if (!FramebufferHelper::prepareColorDeptStencilFBO(width, height, colorTextId, rboId, fboId)) //这创建的framebuffer效果没差别
-	if (!FramebufferHelper::prepareColorRenderFBO(width, height, colorTextId, rboId, fboId))
-	{
-		std::cout << "Error::FBO :" << " not complete." << std::endl;
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
+	glEnable(GL_DEPTH_TEST);	// 开启深度测试
+	glEnable(GL_CULL_FACE);		// 开启面剔除
+#if 0
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
+#else
+	glCullFace(GL_FRONT);		// 改变剔除面的类型，剔除正面
+	//glCullFace(GL_BACK);		// 改变剔除面的类型，剔除背面
+	//glCullFace(GL_FRONT_AND_BACK);		// 改变剔除面的类型，剔除正面和背面，啥都看不到了
+#endif // 0
 
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // 使用线框模式绘制
+	glDepthFunc(GL_LESS);
+
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
 	{
@@ -221,8 +171,8 @@ int main()
 		do_movement();		// 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 深度缓冲区 模板缓冲区
-		/*glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);*/
+		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 0.01f, 100.0f); // 投影矩阵
 		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
@@ -232,48 +182,14 @@ int main()
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 
-		// 启用用户自定义的FBO
-		glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-		//glEnable(GL_CULL_FACE);	//打开这个看不到立方体内部
-		// 清除颜色缓冲区 重置为指定颜色
-		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// 绘制第一个立方体
 		glBindVertexArray(cubeVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, cubeTextId);
-
-		// 绘制第一个立方体
 		model = glm::mat4();
 		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		// 绘制第二个立方体反射
-		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		// 绘制平面
-		glBindVertexArray(planeVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, planeTextId);
-		model = glm::mat4();
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-
-		// 恢复默认FBO	在矩形上绘制FBO的纹理
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glDisable(GL_DEPTH_TEST);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		quadShader.use();
-		glBindVertexArray(quadVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, colorTextId); // 像使用普通纹理一样需要绑定
-		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -282,9 +198,7 @@ int main()
 
 	// 释放资源
 	glDeleteVertexArrays(1, &cubeVAOId);
-	glDeleteVertexArrays(1, &planeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
-	glDeleteBuffers(1, &planeVBOId);
 	glfwTerminate();
 	return 0;
 }
