@@ -54,6 +54,30 @@ public:
 		return true;
 	}
 
+	/*
+	* 附加纹理到Color Attachment 同时附加RBO到depth stencil Attachment
+	*/
+	static bool prepareColorRenderMSFBO(GLsizei width, GLsizei height, const int samplesCnt, GLuint& colorTextId, GLuint& fboId)
+	{
+		glGenFramebuffers(1, &fboId);
+		glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+		// 附加 color attachment
+		colorTextId = TextureHelper::makeMAAttachmentTexture(samplesCnt, GL_RGB); // 创建FBO中的多采样纹理
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, colorTextId, 0);
+		// 附加 depth stencil RBO attachment
+		GLuint rboId;
+		glGenRenderbuffers(1, &rboId);
+		glBindRenderbuffer(GL_RENDERBUFFER, rboId);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, samplesCnt, GL_DEPTH24_STENCIL8,
+			width, height); // 预分配内存
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rboId);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			return false;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return true;
+	}
 };
 
 #endif // !_FRAMEBUFFER_H_
