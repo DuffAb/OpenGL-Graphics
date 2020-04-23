@@ -31,7 +31,7 @@ int main()
 	}
 	// 开启OpenGL 3.3 core profile
 	std::cout << "Starting GLFW context, OpenGL 3.3" << std::endl;
-	glfwWindowHint(GLFW_SAMPLES, 4);				// 设置采样点个数4个，注意这里设置GLFW选项，不要写成了GL_SAMPLES
+	//glfwWindowHint(GLFW_SAMPLES, 4);				// 设置采样点个数4个，注意这里设置GLFW选项，不要写成了GL_SAMPLES
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);	// We want OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of anti-aliasing(press O on, F off)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiSampled FBO", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -143,9 +143,18 @@ int main()
 	glBindVertexArray(0);
 
 	// Section3 准备着色器程序
-	Shader shader("shader/antiAliasing/antialiasing/scene.vertex", "shader/antiAliasing/antialiasing/scene.frag");
+	Shader shader("shader/antiAliasing/antialiasingFBO/scene.vertex", "shader/antiAliasing/antialiasingFBO/scene.frag");
 
-	glEnable(GL_MULTISAMPLE); // 开启multisample
+	// Section4 创建多采样的FBO
+	GLuint MSTextId, MSFBOId;
+	if (!FramebufferHelper::prepareColorRenderMSFBO(width, height, 4, MSTextId, MSFBOId))
+	{
+		std::cout << "Error::FBO :" << " not complete." << std::endl;
+		glfwTerminate();
+		std::system("pause");
+		return -1;
+	}
+	//glEnable(GL_MULTISAMPLE); // 开启multisample
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
 #if 0
@@ -168,7 +177,8 @@ int main()
 		glfwPollEvents();	// 处理例如鼠标 键盘等事件
 		do_movement();		// 根据用户操作情况 更新相机属性
 
-		// 清除颜色缓冲区 深度缓冲区 模板缓冲区
+		// 第一遍 绘制到多采样的FBO中
+		glBindFramebuffer(GL_FRAMEBUFFER, MSFBOId);
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -187,6 +197,12 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(cubeVAOId);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+
+		// 第二遍 将多采样的FBO纹理复制到默认FBO
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, MSFBOId);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);  // 这里0表示使用默认的FBO
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
