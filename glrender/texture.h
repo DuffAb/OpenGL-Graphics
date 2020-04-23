@@ -63,6 +63,23 @@ public:
 		return textId;
 	}
 
+	/*
+	* 创建 multi-sampled framebuffer-attachable texture
+	*/
+	static GLuint makeMAAttachmentTexture(GLint samplesNum = 4, GLint internalFormat = GL_RGB,
+		GLsizei width = 800, GLsizei height = 600)
+	{
+		GLuint textId;
+		glGenTextures(1, &textId);
+		// 创建一个带有多个采样样本的纹理图片
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textId); // 注意修改target为GL_TEXTURE_2D_MULTISAMPLE
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samplesNum, internalFormat,
+			width, height, GL_TRUE); // 预分配空间
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+
+		return textId;
+	}
+
 #define FOURCC_DXT1 0x31545844 // Equivalent to "DXT1" in ASCII
 #define FOURCC_DXT3 0x33545844 // Equivalent to "DXT3" in ASCII
 #define FOURCC_DXT5 0x35545844 // Equivalent to "DXT5" in ASCII
