@@ -43,7 +43,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, GL_TRUE); // 关闭窗口
-	}	
+	}
+	else if (key == GLFW_KEY_O && action == GLFW_PRESS)
+	{
+		glEnable(GL_MULTISAMPLE);
+	}
+	else if (key == GLFW_KEY_F && action == GLFW_PRESS)
+	{
+		glDisable(GL_MULTISAMPLE);
+	}
 }
 
 // 键盘回调函数原型声明

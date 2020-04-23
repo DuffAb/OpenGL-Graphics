@@ -31,7 +31,7 @@ int main()
 	}
 	// 开启OpenGL 3.3 core profile
 	std::cout << "Starting GLFW context, OpenGL 3.3" << std::endl;
-	glfwWindowHint(GLFW_SAMPLES, 4);				// 4x antialiasing
+	glfwWindowHint(GLFW_SAMPLES, 4);				// 设置采样点个数4个，注意这里设置GLFW选项，不要写成了GL_SAMPLES
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);	// We want OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of FBO(PostProcessing)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of anti-aliasing(press O on, F off)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -142,21 +142,19 @@ int main()
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
-	// Section3 加载纹理
-	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/marble.jpg");
+	// Section3 准备着色器程序
+	Shader shader("shader/antiAliasing/antialiasing/scene.vertex", "shader/antiAliasing/antialiasing/scene.frag");
 
-	// Section4 准备着色器程序
-	Shader shader("shader/faceCulling/cube.vertex", "shader/faceCulling/cube.frag");
-
+	glEnable(GL_MULTISAMPLE); // 开启multisample
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
 #if 0
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CW);
 #else
-	glCullFace(GL_FRONT);		// 改变剔除面的类型，剔除正面
+	//glCullFace(GL_FRONT);		// 改变剔除面的类型，剔除正面
 	//glCullFace(GL_BACK);		// 改变剔除面的类型，剔除背面
-	//glCullFace(GL_FRONT_AND_BACK);		// 改变剔除面的类型，剔除正面和背面，啥都看不到了
+	//glCullFace(GL_FRONT_AND_BACK);	// 改变剔除面的类型，剔除正面和背面，啥都看不到了
 #endif // 0
 
 	glDepthFunc(GL_LESS);
@@ -183,12 +181,11 @@ int main()
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 
 		// 绘制第一个立方体
-		glBindVertexArray(cubeVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, cubeTextId);
 		model = glm::mat4();
-		model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		// 这里填写场景绘制代码
+		glBindVertexArray(cubeVAOId);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
 		glBindVertexArray(0);
