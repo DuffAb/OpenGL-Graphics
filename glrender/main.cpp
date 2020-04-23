@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Skybox(wrong result)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Skybox", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -223,12 +223,12 @@ int main()
 	GLuint skyBoxTextId = TextureHelper::loadCubeMapTexture(faces);
 
 	// Section4 准备着色器程序
-	Shader shader("shader/skyBox/skyBox/scene.vertex", "shader/skyBox/skyBox/scene.frag");
-	Shader skyBoxShader("shader/skyBox/skyBox/skybox.vertex", "shader/skyBox/skyBox/skybox.frag");
+	Shader shader("shader/skyBox/skyBoxOptimized/scene.vertex", "shader/skyBox/skyBoxOptimized/scene.frag");
+	Shader skyBoxShader("shader/skyBox/skyBoxOptimized/skybox.vertex", "shader/skyBox/skyBoxOptimized/skybox.frag");
 
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
-	//glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LESS);
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -245,12 +245,24 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 0.01f, 100.0f); // 投影矩阵
-		glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
+		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵 移除translate部分
 		glm::mat4 model;
 
-		// 先绘制skyBox
-		glDepthMask(GL_FALSE); // 禁止写入深度缓冲区
+		// 先绘制场景
+		shader.use();
+		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glBindVertexArray(cubeVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, cubeTextId); // 注意绑定到CUBE_MAP
+		shader.updateUniform1i("text", 0);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		// 然后绘制包围盒
+		glDepthFunc(GL_LEQUAL); // 深度测试条件 小于等于
 		skyBoxShader.use();
+		view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
 		skyBoxShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		skyBoxShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		glBindVertexArray(skyBoxVAOId);
@@ -258,22 +270,10 @@ int main()
 		glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTextId); // 注意绑定到CUBE_MAP
 		skyBoxShader.updateUniform1i("skybox", 0);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		// 绘制其他物体
-		shader.use();
-		glDepthMask(GL_TRUE);
-		view = camera.getViewMatrix();
-		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glBindVertexArray(cubeVAOId);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, cubeTextId);
-		shader.updateUniform1i("text", 0);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 
 		glUseProgram(0);
+		glDepthFunc(GL_LESS);
 		glfwSwapBuffers(window); // 交换缓存
 	}
 
