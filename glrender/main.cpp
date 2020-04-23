@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiSampled FBO", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiSampled FBO(postProcessing)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -126,6 +126,18 @@ int main()
 		0.5f, -0.5f, 0.5f,1.0f, 0.0f,	// B
 		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
 	};
+
+	// 用于绘制FBO纹理的矩形顶点属性数据
+	GLfloat quadVertices[] = {
+		// 位置 纹理坐标
+		-1.0f, 1.0f, 0.0f, 1.0f,
+		-1.0f, -1.0f, 0.0f, 0.0f,
+		1.0f, -1.0f, 1.0f, 0.0f,
+
+		-1.0f, 1.0f, 0.0f, 1.0f,
+		1.0f, -1.0f, 1.0f, 0.0f,
+		1.0f, 1.0f, 1.0f, 1.0f
+	};
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -142,21 +154,46 @@ int main()
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
+	GLuint quadVAOId, quadVBOId;
+	glGenVertexArrays(1, &quadVAOId);
+	glGenBuffers(1, &quadVBOId);
+	glBindVertexArray(quadVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+	// 顶点位置数据
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	// 顶点纹理数据
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+
 	// Section3 准备着色器程序
-	Shader shader("shader/antiAliasing/antialiasingFBO/scene.vertex", "shader/antiAliasing/antialiasingFBO/scene.frag");
+	Shader shader("shader/antiAliasing/MAFBOPostProcessing/scene.vertex", "shader/antiAliasing/MAFBOPostProcessing/scene.frag");
+	Shader quadShader("shader/antiAliasing/MAFBOPostProcessing/quad.vertex", "shader/antiAliasing/MAFBOPostProcessing/quad.frag");
 
 	// Section4 创建多采样的FBO
 	GLuint MSTextId, MSFBOId;
 	if (!FramebufferHelper::prepareColorRenderMSFBO(width, height, 4, MSTextId, MSFBOId))
 	{
-		std::cout << "Error::FBO :" << " not complete." << std::endl;
+		std::cout << "Error::FBO :" << " multi-sampled FBO not complete." << std::endl;
+		glfwTerminate();
+		std::system("pause");
+		return -1;
+	}
+
+	// 为了在着色器中使用多采样后的纹理 这里需要创建一个中间FBO
+	GLuint screenTextId, intermediateFBOId;
+	if (!FramebufferHelper::prepareIntermediateFBO(width, height, screenTextId, intermediateFBOId))
+	{
+		std::cout << "Error::FBO :" << " intermediate FBO not complete." << std::endl;
 		glfwTerminate();
 		std::system("pause");
 		return -1;
 	}
 	//glEnable(GL_MULTISAMPLE); // 开启multisample
-	glEnable(GL_DEPTH_TEST);	// 开启深度测试
-	glEnable(GL_CULL_FACE);		// 开启面剔除
+	//glEnable(GL_DEPTH_TEST);	// 开启深度测试
+	//glEnable(GL_CULL_FACE);		// 开启面剔除
 #if 0
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CW);
@@ -166,7 +203,7 @@ int main()
 	//glCullFace(GL_FRONT_AND_BACK);	// 改变剔除面的类型，剔除正面和背面，啥都看不到了
 #endif // 0
 
-	glDepthFunc(GL_LESS);
+	//glDepthFunc(GL_LESS);
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -197,14 +234,28 @@ int main()
 		// 这里填写场景绘制代码
 		glBindVertexArray(cubeVAOId);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-
-		// 第二遍 将多采样的FBO纹理复制到默认FBO
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, MSFBOId);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);  // 这里0表示使用默认的FBO
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
 		glBindVertexArray(0);
+
+		// 第二遍 将多采样的FBO纹理复制到中间FBO
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, MSFBOId);	//注意是 GL_READ_FRAMEBUFFER
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBOId);//注意是 GL_DRAW_FRAMEBUFFER
+		glBlitFramebuffer(0, 0, width, height,
+			0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		// 第三遍 利用中间FBO的纹理 绘制到默认FBO中
+		// 因为多采样的纹理无法直接供着色器使用 因此这里使用中间FBO的纹理
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);  // 这里0表示使用默认的FBO
+		glDisable(GL_DEPTH_TEST); // 只是绘制一个有纹理的矩形 可以关闭深度测试
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		quadShader.use();
+		quadShader.updateUniform1i("text", 0);
+		glBindVertexArray(quadVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, screenTextId);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+
 		glUseProgram(0);
 		glfwSwapBuffers(window); // 交换缓存
 	}
@@ -212,6 +263,8 @@ int main()
 	// 释放资源
 	glDeleteVertexArrays(1, &cubeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
+	glDeleteVertexArrays(1, &quadVAOId);
+	glDeleteBuffers(1, &quadVBOId);
 	glfwTerminate();
 	return 0;
 }
