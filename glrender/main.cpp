@@ -39,7 +39,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of multiSampled FBO(postProcessing)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Skybox(wrong result)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -127,16 +127,55 @@ int main()
 		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
 	};
 
-	// 用于绘制FBO纹理的矩形顶点属性数据
-	GLfloat quadVertices[] = {
-		// 位置 纹理坐标
-		-1.0f, 1.0f, 0.0f, 1.0f,
-		-1.0f, -1.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, 1.0f, 0.0f,
+	// 指定包围盒的顶点属性 位置
+	GLfloat skyboxVertices[] = {
+		// 背面
+		-1.0f, 1.0f, -1.0f,		// A
+		-1.0f, -1.0f, -1.0f,	// B
+		1.0f, -1.0f, -1.0f,		// C
+		1.0f, -1.0f, -1.0f,		// C
+		1.0f, 1.0f, -1.0f,		// D
+		-1.0f, 1.0f, -1.0f,		// A
 
-		-1.0f, 1.0f, 0.0f, 1.0f,
-		1.0f, -1.0f, 1.0f, 0.0f,
-		1.0f, 1.0f, 1.0f, 1.0f
+		// 左侧面
+		-1.0f, -1.0f, 1.0f,		// E
+		-1.0f, -1.0f, -1.0f,	// B
+		-1.0f, 1.0f, -1.0f,		// A
+		-1.0f, 1.0f, -1.0f,		// A
+		-1.0f, 1.0f, 1.0f,		// F
+		-1.0f, -1.0f, 1.0f,		// E
+
+		// 右侧面
+		1.0f, -1.0f, -1.0f,		// C
+		1.0f, -1.0f, 1.0f,		// G
+		1.0f, 1.0f, 1.0f,		// H
+		1.0f, 1.0f, 1.0f,		// H
+		1.0f, 1.0f, -1.0f,		// D
+		1.0f, -1.0f, -1.0f,		// C
+
+		// 正面
+		-1.0f, -1.0f, 1.0f,  // E
+		-1.0f, 1.0f, 1.0f,  // F
+		1.0f, 1.0f, 1.0f,  // H
+		1.0f, 1.0f, 1.0f,  // H
+		1.0f, -1.0f, 1.0f,  // G
+		-1.0f, -1.0f, 1.0f,  // E
+
+		// 顶面
+		-1.0f, 1.0f, -1.0f,  // A
+		1.0f, 1.0f, -1.0f,  // D
+		1.0f, 1.0f, 1.0f,  // H
+		1.0f, 1.0f, 1.0f,  // H
+		-1.0f, 1.0f, 1.0f,  // F
+		-1.0f, 1.0f, -1.0f,  // A
+
+		// 底面
+		-1.0f, -1.0f, -1.0f,  // B
+		-1.0f, -1.0f, 1.0f,   // E
+		1.0f, -1.0f, 1.0f,    // G
+		1.0f, -1.0f, 1.0f,    // G
+		1.0f, -1.0f, -1.0f,   // C
+		-1.0f, -1.0f, -1.0f,  // B
 	};
 	
 	// Section2 准备缓存对象
@@ -154,55 +193,41 @@ int main()
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
-	GLuint quadVAOId, quadVBOId;
-	glGenVertexArrays(1, &quadVAOId);
-	glGenBuffers(1, &quadVBOId);
-	glBindVertexArray(quadVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+	GLuint skyBoxVAOId, skyBoxVBOId;
+	glGenVertexArrays(1, &skyBoxVAOId);
+	glGenBuffers(1, &skyBoxVBOId);
+	glBindVertexArray(skyBoxVAOId);
+	glBindBuffer(GL_ARRAY_BUFFER, skyBoxVBOId);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
 	// 顶点位置数据
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
-	// 顶点纹理数据
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 
-	// Section3 准备着色器程序
-	Shader shader("shader/antiAliasing/MAFBOPostProcessing/scene.vertex", "shader/antiAliasing/MAFBOPostProcessing/scene.frag");
-	Shader quadShader("shader/antiAliasing/MAFBOPostProcessing/quad.vertex", "shader/antiAliasing/MAFBOPostProcessing/quad.frag");
+	// Section3 加载纹理
+	GLuint cubeTextId = TextureHelper::load2DTexture("resources/textures/container.jpg");
+	std::vector<const char*> faces;
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_rt.jpg");
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_lf.jpg");
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_up.jpg");
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_dn.jpg");
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_bk.jpg");
+	// 	faces.push_back("../../resources/skyboxes/sky/sky_ft.jpg");
 
-	// Section4 创建多采样的FBO
-	GLuint MSTextId, MSFBOId;
-	if (!FramebufferHelper::prepareColorRenderMSFBO(width, height, 4, MSTextId, MSFBOId))
-	{
-		std::cout << "Error::FBO :" << " multi-sampled FBO not complete." << std::endl;
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
+	faces.push_back("resources/skyboxes/urbansp/urbansp_rt.tga");
+	faces.push_back("resources/skyboxes/urbansp/urbansp_lf.tga");
+	faces.push_back("resources/skyboxes/urbansp/urbansp_up.tga");
+	faces.push_back("resources/skyboxes/urbansp/urbansp_dn.tga");
+	faces.push_back("resources/skyboxes/urbansp/urbansp_bk.tga");
+	faces.push_back("resources/skyboxes/urbansp/urbansp_ft.tga");
+	GLuint skyBoxTextId = TextureHelper::loadCubeMapTexture(faces);
 
-	// 为了在着色器中使用多采样后的纹理 这里需要创建一个中间FBO
-	GLuint screenTextId, intermediateFBOId;
-	if (!FramebufferHelper::prepareIntermediateFBO(width, height, screenTextId, intermediateFBOId))
-	{
-		std::cout << "Error::FBO :" << " intermediate FBO not complete." << std::endl;
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
-	//glEnable(GL_MULTISAMPLE); // 开启multisample
-	//glEnable(GL_DEPTH_TEST);	// 开启深度测试
-	//glEnable(GL_CULL_FACE);		// 开启面剔除
-#if 0
-	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
-#else
-	//glCullFace(GL_FRONT);		// 改变剔除面的类型，剔除正面
-	//glCullFace(GL_BACK);		// 改变剔除面的类型，剔除背面
-	//glCullFace(GL_FRONT_AND_BACK);	// 改变剔除面的类型，剔除正面和背面，啥都看不到了
-#endif // 0
+	// Section4 准备着色器程序
+	Shader shader("shader/skyBox/skyBox/scene.vertex", "shader/skyBox/skyBox/scene.frag");
+	Shader skyBoxShader("shader/skyBox/skyBox/skybox.vertex", "shader/skyBox/skyBox/skybox.frag");
 
+	glEnable(GL_DEPTH_TEST);	// 开启深度测试
+	glEnable(GL_CULL_FACE);		// 开启面剔除
 	//glDepthFunc(GL_LESS);
 
 	// 开始游戏主循环
@@ -214,46 +239,38 @@ int main()
 		glfwPollEvents();	// 处理例如鼠标 键盘等事件
 		do_movement();		// 根据用户操作情况 更新相机属性
 
-		// 第一遍 绘制到多采样的FBO中
-		glBindFramebuffer(GL_FRAMEBUFFER, MSFBOId);
+		// 设置colorBuffer颜色
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
+		// 清除colorBuffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 0.01f, 100.0f); // 投影矩阵
-		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
+		glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
 		glm::mat4 model;
 
+		// 先绘制skyBox
+		glDepthMask(GL_FALSE); // 禁止写入深度缓冲区
+		skyBoxShader.use();
+		skyBoxShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
+		skyBoxShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		glBindVertexArray(skyBoxVAOId);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTextId); // 注意绑定到CUBE_MAP
+		skyBoxShader.updateUniform1i("skybox", 0);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		// 绘制其他物体
 		shader.use();
+		glDepthMask(GL_TRUE);
+		view = camera.getViewMatrix();
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-
-		// 绘制第一个立方体
-		model = glm::mat4();
-		model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		// 这里填写场景绘制代码
 		glBindVertexArray(cubeVAOId);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		glBindVertexArray(0);
-
-		// 第二遍 将多采样的FBO纹理复制到中间FBO
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, MSFBOId);	//注意是 GL_READ_FRAMEBUFFER
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, intermediateFBOId);//注意是 GL_DRAW_FRAMEBUFFER
-		glBlitFramebuffer(0, 0, width, height,
-			0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-		// 第三遍 利用中间FBO的纹理 绘制到默认FBO中
-		// 因为多采样的纹理无法直接供着色器使用 因此这里使用中间FBO的纹理
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);  // 这里0表示使用默认的FBO
-		glDisable(GL_DEPTH_TEST); // 只是绘制一个有纹理的矩形 可以关闭深度测试
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		quadShader.use();
-		quadShader.updateUniform1i("text", 0);
-		glBindVertexArray(quadVAOId);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, screenTextId);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindTexture(GL_TEXTURE_2D, cubeTextId);
+		shader.updateUniform1i("text", 0);
+		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 
 		glUseProgram(0);
@@ -263,8 +280,8 @@ int main()
 	// 释放资源
 	glDeleteVertexArrays(1, &cubeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
-	glDeleteVertexArrays(1, &quadVAOId);
-	glDeleteBuffers(1, &quadVBOId);
+	glDeleteVertexArrays(1, &skyBoxVAOId);
+	glDeleteBuffers(1, &skyBoxVBOId);
 	glfwTerminate();
 	return 0;
 }
