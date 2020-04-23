@@ -78,6 +78,23 @@ public:
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		return true;
 	}
+
+	// 创建一个只包含color attachement的FBO
+	static bool prepareIntermediateFBO(GLsizei width, GLsizei height, GLuint& colorTextId, GLuint& fboId)
+	{
+		glGenFramebuffers(1, &fboId);
+		glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+		// 附加 color attachment
+		colorTextId = TextureHelper::makeAttachmentTexture(0, GL_RGB, width,
+			height, GL_RGB, GL_UNSIGNED_BYTE); // 创建FBO中的纹理
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTextId, 0);
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			return false;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return true;
+	}
 };
 
 #endif // !_FRAMEBUFFER_H_
