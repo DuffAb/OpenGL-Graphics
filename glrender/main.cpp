@@ -20,6 +20,8 @@
 #include "model.h"
 // 准备framebuffer的类
 #include "framebuffer.h"
+// 天空包围盒类
+#include "skybox.h"
 
 int main()
 {
@@ -126,57 +128,6 @@ int main()
 		0.5f, -0.5f, 0.5f,1.0f, 0.0f,	// B
 		-0.5f, -0.5f, 0.5f,0.0f, 0.0f,	// A
 	};
-
-	// 指定包围盒的顶点属性 位置
-	GLfloat skyboxVertices[] = {
-		// 背面
-		-1.0f, 1.0f, -1.0f,		// A
-		-1.0f, -1.0f, -1.0f,	// B
-		1.0f, -1.0f, -1.0f,		// C
-		1.0f, -1.0f, -1.0f,		// C
-		1.0f, 1.0f, -1.0f,		// D
-		-1.0f, 1.0f, -1.0f,		// A
-
-		// 左侧面
-		-1.0f, -1.0f, 1.0f,		// E
-		-1.0f, -1.0f, -1.0f,	// B
-		-1.0f, 1.0f, -1.0f,		// A
-		-1.0f, 1.0f, -1.0f,		// A
-		-1.0f, 1.0f, 1.0f,		// F
-		-1.0f, -1.0f, 1.0f,		// E
-
-		// 右侧面
-		1.0f, -1.0f, -1.0f,		// C
-		1.0f, -1.0f, 1.0f,		// G
-		1.0f, 1.0f, 1.0f,		// H
-		1.0f, 1.0f, 1.0f,		// H
-		1.0f, 1.0f, -1.0f,		// D
-		1.0f, -1.0f, -1.0f,		// C
-
-		// 正面
-		-1.0f, -1.0f, 1.0f,  // E
-		-1.0f, 1.0f, 1.0f,  // F
-		1.0f, 1.0f, 1.0f,  // H
-		1.0f, 1.0f, 1.0f,  // H
-		1.0f, -1.0f, 1.0f,  // G
-		-1.0f, -1.0f, 1.0f,  // E
-
-		// 顶面
-		-1.0f, 1.0f, -1.0f,  // A
-		1.0f, 1.0f, -1.0f,  // D
-		1.0f, 1.0f, 1.0f,  // H
-		1.0f, 1.0f, 1.0f,  // H
-		-1.0f, 1.0f, 1.0f,  // F
-		-1.0f, 1.0f, -1.0f,  // A
-
-		// 底面
-		-1.0f, -1.0f, -1.0f,  // B
-		-1.0f, -1.0f, 1.0f,   // E
-		1.0f, -1.0f, 1.0f,    // G
-		1.0f, -1.0f, 1.0f,    // G
-		1.0f, -1.0f, -1.0f,   // C
-		-1.0f, -1.0f, -1.0f,  // B
-	};
 	
 	// Section2 准备缓存对象
 	GLuint cubeVAOId, cubeVBOId;
@@ -191,17 +142,6 @@ int main()
 	// 顶点纹理数据
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
-	glBindVertexArray(0);
-
-	GLuint skyBoxVAOId, skyBoxVBOId;
-	glGenVertexArrays(1, &skyBoxVAOId);
-	glGenBuffers(1, &skyBoxVBOId);
-	glBindVertexArray(skyBoxVAOId);
-	glBindBuffer(GL_ARRAY_BUFFER, skyBoxVBOId);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
-	// 顶点位置数据
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
 	glBindVertexArray(0);
 
 	// Section3 加载纹理
@@ -223,8 +163,12 @@ int main()
 	GLuint skyBoxTextId = TextureHelper::loadCubeMapTexture(faces);
 
 	// Section4 准备着色器程序
-	Shader shader("shader/skyBox/skyBoxUsingScale/scene.vertex", "shader/skyBox/skyBoxUsingScale/scene.frag");
-	Shader skyBoxShader("shader/skyBox/skyBoxUsingScale/skybox.vertex", "shader/skyBox/skyBoxUsingScale/skybox.frag");
+	Shader shader("shader/skyBox/skyBoxClass/scene.vertex", "shader/skyBox/skyBoxClass/scene.frag");
+	Shader skyBoxShader("shader/skyBox/skyBoxClass/skybox.vertex", "shader/skyBox/skyBoxClass/skybox.frag");
+
+	// Section5 准备skyBox
+	SkyBox skybox;
+	skybox.init(faces);
 
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
@@ -259,20 +203,15 @@ int main()
 		shader.updateUniform1i("text", 0);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		// 然后绘制包围盒  使包围盒原点位于观察者位置并使用缩放
-		glDepthFunc(GL_LEQUAL); // 深度测试条件 小于等于
+		// 然后绘制包围盒
 		skyBoxShader.use();
 		view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
 		skyBoxShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		skyBoxShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		model = glm::translate(glm::mat4(), camera.position);
-		model = glm::scale(model, glm::vec3(20.0f, 20.0f, 20.0f));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glBindVertexArray(skyBoxVAOId);
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTextId); // 注意绑定到CUBE_MAP
+		glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getTextId()); // 注意绑定到CUBE_MAP
 		skyBoxShader.updateUniform1i("skybox", 0);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		skybox.draw(skyBoxShader);
 		glBindVertexArray(0);
 
 		glUseProgram(0);
@@ -283,8 +222,6 @@ int main()
 	// 释放资源
 	glDeleteVertexArrays(1, &cubeVAOId);
 	glDeleteBuffers(1, &cubeVBOId);
-	glDeleteVertexArrays(1, &skyBoxVAOId);
-	glDeleteBuffers(1, &skyBoxVBOId);
 	glfwTerminate();
 	return 0;
 }
