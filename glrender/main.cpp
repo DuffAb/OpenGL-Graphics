@@ -223,8 +223,8 @@ int main()
 	GLuint skyBoxTextId = TextureHelper::loadCubeMapTexture(faces);
 
 	// Section4 准备着色器程序
-	Shader shader("shader/skyBox/skyBoxOptimized/scene.vertex", "shader/skyBox/skyBoxOptimized/scene.frag");
-	Shader skyBoxShader("shader/skyBox/skyBoxOptimized/skybox.vertex", "shader/skyBox/skyBoxOptimized/skybox.frag");
+	Shader shader("shader/skyBox/skyBoxUsingScale/scene.vertex", "shader/skyBox/skyBoxUsingScale/scene.frag");
+	Shader skyBoxShader("shader/skyBox/skyBoxUsingScale/skybox.vertex", "shader/skyBox/skyBoxUsingScale/skybox.frag");
 
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
@@ -259,12 +259,15 @@ int main()
 		shader.updateUniform1i("text", 0);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		// 然后绘制包围盒
+		// 然后绘制包围盒  使包围盒原点位于观察者位置并使用缩放
 		glDepthFunc(GL_LEQUAL); // 深度测试条件 小于等于
 		skyBoxShader.use();
 		view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
 		skyBoxShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		skyBoxShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		model = glm::translate(glm::mat4(), camera.position);
+		model = glm::scale(model, glm::vec3(20.0f, 20.0f, 20.0f));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glBindVertexArray(skyBoxVAOId);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, skyBoxTextId); // 注意绑定到CUBE_MAP
