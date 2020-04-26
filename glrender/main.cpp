@@ -22,6 +22,9 @@
 #include "framebuffer.h"
 // 天空包围盒类
 #include "skybox.h"
+// 包含字体管理类
+#include "font.h"
+
 
 int main()
 {
@@ -41,7 +44,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of EnviromentMapping(refraction)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of Text Rendering", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -70,8 +73,7 @@ int main()
 	GLenum status = glewInit();
 	if (status != GLEW_OK)
 	{
-		std::cout << "Error::GLEW glew version:" << glewGetString(GLEW_VERSION)
-			<< " error string:" << glewGetErrorString(status) << std::endl;
+		std::cout << "Error::GLEW glew version:" << glewGetString(GLEW_VERSION) << " error string:" << glewGetErrorString(status) << std::endl;
 		glfwTerminate();
 		return -1;
 	}
@@ -82,40 +84,21 @@ int main()
 	// 设置视口参数
 	glViewport(0, 0, width, height);
 
-	//Section1 加载模型数据
-	Model objModel;
-	if (!objModel.loadModel("resources/models/sphere/sphere.obj"))
-	{
-		glfwTerminate();
-		std::system("pause");
-		return -1;
-	}
+	// Section1 准备顶点数据和FBO
+	FontHelper::getInstance().prepareTextVBO();
 
-	// Section2 创建Skybox
-	std::vector<const char*> faces;
-	faces.push_back("resources/skyboxes/sky/sky_rt.jpg");
-	faces.push_back("resources/skyboxes/sky/sky_lf.jpg");
-	faces.push_back("resources/skyboxes/sky/sky_up.jpg");
-	faces.push_back("resources/skyboxes/sky/sky_dn.jpg");
-	faces.push_back("resources/skyboxes/sky/sky_bk.jpg");
-	faces.push_back("resources/skyboxes/sky/sky_ft.jpg");
-
-	/*faces.push_back("resources/skyboxes/urbansp/urbansp_rt.tga");
-	faces.push_back("resources/skyboxes/urbansp/urbansp_lf.tga");
-	faces.push_back("resources/skyboxes/urbansp/urbansp_up.tga");
-	faces.push_back("resources/skyboxes/urbansp/urbansp_dn.tga");
-	faces.push_back("resources/skyboxes/urbansp/urbansp_bk.tga");
-	faces.push_back("resources/skyboxes/urbansp/urbansp_ft.tga");*/
-	SkyBox skybox;
-	skybox.init(faces);
+	// Section2 加载字形
+	FontHelper::getInstance().loadFont("saveWater", "resources/fonts/saveWater.ttf");
+	FontHelper::getInstance().loadASCIIChar("saveWater", 38);
+	FontHelper::getInstance().loadUnicodeText("saveWater", 38, std::wstring(L"关关雎鸠在河之洲窈窕淑女君子好逑"));
 
 	// Section3 准备着色器程序
-	Shader shader("shader/environmentMapping/refraction-model/scene.vertex", "shader/environmentMapping/refraction-model/scene.frag");
-	Shader skyBoxShader("shader/environmentMapping/refraction-model/skybox.vertex", "shader/environmentMapping/refraction-model/skybox.frag");
+	Shader shader("shader/textRendering/textRendering1/scene.vertex", "shader/textRendering/textRendering1/scene.frag");
 
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
-	glDepthFunc(GL_LESS);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// 注意绘制文字时开启透明特性
 
 	// 开始游戏主循环
 	while (!glfwWindowShouldClose(window))
@@ -131,31 +114,40 @@ int main()
 		// 清除colorBuffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 0.01f, 100.0f); // 投影矩阵
-		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵 移除translate部分
+		// 绘制文字时使用正交投影
+		glm::mat4 projection = glm::ortho(0.0f, (GLfloat)(width), 0.0f, (GLfloat)height);
+		glm::mat4 view = camera.getViewMatrix();
 		glm::mat4 model;
 
 		// 先绘制场景
 		shader.use();
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		//shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getTextId());
-		shader.updateUniform1i("envText", 0);
-		shader.updateUniform3f("cameraPos", camera.position.x, camera.position.y, camera.position.z); // 注意设置观察者位置
-		objModel.draw(shader);	// 绘制球体
-
-		// 然后绘制包围盒
-		skyBoxShader.use();
-		view = glm::mat4(glm::mat3(camera.getViewMatrix())); // 视变换矩阵 移除translate部分
-		skyBoxShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
-		skyBoxShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getTextId()); // 注意绑定到CUBE_MAP
-		skyBoxShader.updateUniform1i("skybox", 0);
-		skybox.draw(skyBoxShader);
+		GLfloat xOffset = 0, yOffset = 0;
+		// xOffset = sin(glfwGetTime()) / 4.0  * WINDOW_WIDTH;
+		// yOffset = cos(glfwGetTime()) / 4.0 * WINDOW_HEIGHT; // 偏移随机位置
+		GLfloat xPos = width / 3.0f + xOffset;
+		GLfloat yPos = height / 2.0f + yOffset;
+		
+		FontHelper::getInstance().renderText(shader, L"Hello World",
+			xPos,
+			yPos,
+			1.4f, glm::vec3(1.0f, 1.0f, 0.0f));
+		FontHelper::getInstance().renderText(shader, L"关关雎鸠 在河之洲",
+			xPos + 35.0f,
+			yPos - 55.0f,
+			0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
+		FontHelper::getInstance().renderText(shader, L"窈窕淑女 君子好逑",
+			xPos + 35.0f,
+			yPos - 95.0f,
+			0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
+		FontHelper::getInstance().renderText(shader, L"Render With OpenGL",
+			xPos + 55.0f,
+			yPos - 200.0f,
+			0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
+		glBindVertexArray(0);
 
 		glUseProgram(0);
 		glDepthFunc(GL_LESS);
