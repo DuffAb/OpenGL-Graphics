@@ -14,6 +14,7 @@
 #pragma comment(lib, "glew32sd.lib")
 #pragma comment(lib, "SOIL.lib")
 #pragma comment(lib, "assimp-vc140-mt.lib")
+#pragma comment(lib, "freetype.lib")
 
 #endif // _COMMON_H_
 
