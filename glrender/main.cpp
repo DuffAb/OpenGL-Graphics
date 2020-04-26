@@ -41,7 +41,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// 创建窗口
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of EnviromentMapping(reflection)", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Demo of EnviromentMapping(reflection map)", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -84,7 +84,7 @@ int main()
 
 	//Section1 加载模型数据
 	Model objModel;
-	if (!objModel.loadModel("resources/models/sphere/sphere.obj"))
+	if (!objModel.loadModel("resources/models/nanosuit_reflection/nanosuit.obj"))
 	{
 		glfwTerminate();
 		std::system("pause");
@@ -110,8 +110,8 @@ int main()
 	skybox.init(faces);
 
 	// Section3 准备着色器程序
-	Shader shader("shader/environmentMapping/reflection-model/scene.vertex", "shader/environmentMapping/reflection-model/scene.frag");
-	Shader skyBoxShader("shader/environmentMapping/reflection-model/skybox.vertex", "shader/environmentMapping/reflection-model/skybox.frag");
+	Shader shader("shader/environmentMapping/reflectionMap/scene.vertex", "shader/environmentMapping/reflectionMap/scene.frag");
+	Shader skyBoxShader("shader/environmentMapping/reflectionMap/skybox.vertex", "shader/environmentMapping/reflectionMap/skybox.frag");
 
 	glEnable(GL_DEPTH_TEST);	// 开启深度测试
 	glEnable(GL_CULL_FACE);		// 开启面剔除
@@ -139,11 +139,14 @@ int main()
 		shader.use();
 		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
+		model = glm::translate(model, glm::vec3(0.0f, -1.55f, 0.0f)); // 适当下调位置
+		model = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.2f)); // 适当缩小模型
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, cubeTextId);
+		// 注意已经有了diffuse specular reflection map 
+		// 这里应该设置为第四个纹理单元
+		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, skybox.getTextId());
-		shader.updateUniform1i("envText", 0);
+		shader.updateUniform1i("envText", 3);
 		shader.updateUniform3f("cameraPos", camera.position.x, camera.position.y, camera.position.z); // 注意设置观察者位置
 		objModel.draw(shader);	// 绘制球体
 
