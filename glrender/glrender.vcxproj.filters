@@ -53,5 +53,11 @@
     <ClInclude Include="font.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="fps.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="cube.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
