@@ -148,6 +148,11 @@ private:
 			std::vector<Texture> specularTexture;
 			this->processMaterial(materialPtr, sceneObjPtr, aiTextureType_SPECULAR, specularTexture);
 			textures.insert(textures.end(), specularTexture.begin(), specularTexture.end());
+			// 获取Reflection 注意: AssImp对Reflection支持不好 所以这里采用ambient_map
+			// 除了这里的代码 还需要修改对应的obj文件
+			std::vector<Texture> reflectionTexture;
+			this->processMaterial(materialPtr, sceneObjPtr, aiTextureType_AMBIENT, reflectionTexture);
+			textures.insert(textures.end(), reflectionTexture.begin(), reflectionTexture.end());
 		}
 		meshObj.setData(vertData, textures, indices);
 		return true;

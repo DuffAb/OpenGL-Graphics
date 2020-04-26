@@ -50,7 +50,7 @@ public:
 		}
 		shader.use();
 		glBindVertexArray(this->VAOId);
-		int diffuseCnt = 0, specularCnt = 0, texUnitCnt = 0;
+		int diffuseCnt = 0, specularCnt = 0, reflectCnt = 0, texUnitCnt = 0;
 		for (std::vector<Texture>::const_iterator it = this->textures.begin(); this->textures.end() != it; ++it)
 		{
 			switch (it->type)
@@ -70,6 +70,15 @@ public:
 				glBindTexture(GL_TEXTURE_2D, it->id);
 				std::stringstream samplerNameStr;
 				samplerNameStr << "texture_specular" << specularCnt++;
+				shader.updateUniform1i(samplerNameStr.str().c_str(), texUnitCnt++);
+			}
+			break;
+			case aiTextureType_AMBIENT:		// 注意: 这里是为了应对AssImp对reflection_map支持不好 而临时方案
+			{
+				glActiveTexture(GL_TEXTURE0 + texUnitCnt);
+				glBindTexture(GL_TEXTURE_2D, it->id);
+				std::stringstream samplerNameStr;
+				samplerNameStr << "texture_reflection" << reflectCnt++;
 				shader.updateUniform1i(samplerNameStr.str().c_str(), texUnitCnt++);
 			}
 			break;
