@@ -42,8 +42,8 @@ public:
 		}
 		FT_Done_FreeType(_ft);
 
-		glDeleteVertexArrays(1, &quadVAOId);
-		glDeleteBuffers(1, &quadVBOId);
+		glDeleteVertexArrays(1, &textVAOId);
+		glDeleteBuffers(1, &textVBOId);
 	}
 
 private:
@@ -60,10 +60,10 @@ private:
 public:
 	void prepareTextVBO()
 	{
-		glGenVertexArrays(1, &quadVAOId);
-		glGenBuffers(1, &quadVBOId);
-		glBindVertexArray(quadVAOId);
-		glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
+		glGenVertexArrays(1, &textVAOId);
+		glGenBuffers(1, &textVBOId);
+		glBindVertexArray(textVAOId);
+		glBindBuffer(GL_ARRAY_BUFFER, textVBOId);
 		// 绘制文字的矩形顶点属性数据 位置 纹理 是动态计算出来的
 		// 这里预分配空间
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 6 * 4, nullptr, GL_DYNAMIC_DRAW);
@@ -77,7 +77,7 @@ public:
 		shader.use();
 		shader.updateUniform3f("textColor", color.x, color.y, color.z);
 		glActiveTexture(GL_TEXTURE0);
-		glBindVertexArray(quadVAOId);
+		glBindVertexArray(textVAOId);
 
 		// 遍历绘制字符串中字符
 		std::wstring::const_iterator c;
@@ -107,7 +107,7 @@ public:
 			// 绑定这个字符对应的纹理
 			glBindTexture(GL_TEXTURE_2D, ch.textureId);
 			// 动态设置VBO中数据 因为这个表示文字的矩形位置数据有变动 需要动态调整
-			glBindBuffer(GL_ARRAY_BUFFER, quadVBOId);
+			glBindBuffer(GL_ARRAY_BUFFER, textVBOId);
 			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -253,7 +253,7 @@ private:
 	FT_Library _ft;
 	FontFaceMapType _faceMap;
 
-	GLuint quadVAOId, quadVBOId;
+	GLuint textVAOId, textVBOId;
 	std::map<wchar_t, FontCharacter> characters;
 };
 

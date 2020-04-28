@@ -15,6 +15,7 @@
 #pragma comment(lib, "SOIL.lib")
 #pragma comment(lib, "assimp-vc140-mt.lib")
 #pragma comment(lib, "freetype.lib")
+#pragma comment(lib, "opencv_world343d.lib")
 
 #endif // _COMMON_H_
 
