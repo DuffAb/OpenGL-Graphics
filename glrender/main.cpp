@@ -50,10 +50,9 @@ const int    TEXT_HEIGHT = 30;
 void updatePixels(unsigned char* src, int width, int height, unsigned char* dst);
 
 Timer timer, t1;
-float readTime, processTime;
+float copyTime, updateTime;
 
 void renderInfo(Shader& shader);
-bool isFirstRendered = false;
 void renderInitScene(Shader& shader);
 void renderScene(Shader& shader);
 
@@ -120,19 +119,18 @@ int main()
 	// Section1 准备顶点数据
 	QuadHelper::getInstance().prepareQuadVBO();//准备四方形面片顶点数据
 	FontHelper::getInstance().prepareTextVBO();//准备字体渲染顶点数据空间
-	bh.preparePBO();
+	bh.prepare_unpack_pbo();
 
 	// Section2 加载字体
 	FontHelper::getInstance().loadFont("arial", "resources/fonts/arial.ttf");
 	FontHelper::getInstance().loadASCIIChar("arial", 38);
 
 	// Section3 加载纹理
-	cubeTextId = TextureHelper::load2DTexture("resources/textures/wood.png");
-	bh.initPixelTexture();
+	bh.init_pixel_texture();
 
 	// Section4 准备着色器程序
-	Shader shader("shader/PBO/PBO-pack/scene.vertex", "shader/PBO/PBO-pack/scene.frag");
-	Shader textShader("shader/PBO/PBO-pack/text.vertex", "shader/PBO/PBO-pack/text.frag");
+	Shader shader("shader/PBO/PBO-unpack/scene.vertex", "shader/PBO/PBO-unpack/scene.frag");
+	Shader textShader("shader/PBO/PBO-unpack/text.vertex", "shader/PBO/PBO-unpack/text.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -161,15 +159,8 @@ int main()
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		model = glm::mat4();
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		if (!isFirstRendered)
-		{
-			renderInitScene(shader);
-			isFirstRendered = true;
-		}
-		else
-		{
-			renderScene(shader);
-		}
+		renderScene(shader);
+
 		// 在右侧绘制信息文字 否则左侧文字会复制到右侧
 		textShader.use();
 		projection = glm::ortho(0.0f, (GLfloat)(SINGLE_SCREEN_WIDTH), 0.0f, (GLfloat)SINGLE_SCREEN_HEIGHT);
@@ -193,38 +184,23 @@ int main()
 // 改变像素的亮度
 void updatePixels(unsigned char* src, int width, int height, unsigned char* dst)
 {
-	if (!src || !dst)
+	static int color = 0;
+
+	if (!src)
 		return;
-	static int shift = 0;
-	shift = ++shift % 200;
 
-	int value;
-	for (int i = 0; i < height; ++i)
+	int* ptr = (int*)src;  // 每次处理4个字节
+
+	for (int i = 0; i < width; ++i)
 	{
-		for (int j = 0; j < width; ++j)
+		for (int j = 0; j < height; ++j)
 		{
-			value = *src + shift;
-			if (value > 255) *dst = (unsigned char)255;
-			else            *dst = (unsigned char)value;
-			++src;
-			++dst;
-
-			value = *src + shift;
-			if (value > 255) *dst = (unsigned char)255;
-			else            *dst = (unsigned char)value;
-			++src;
-			++dst;
-
-			value = *src + shift;
-			if (value > 255) *dst = (unsigned char)255;
-			else            *dst = (unsigned char)value;
-			++src;
-			++dst;
-
-			++src;    // 跳过alpha
-			++dst;
+			*ptr = color;
+			++ptr;
 		}
+		color += 257;   // 加入随机量 这个值无意义
 	}
+	++color;
 }
 
 // 绘制一个初始场景 保证当FBO里使用glReadPixels时有内容
@@ -249,40 +225,55 @@ void drawLeftSidePixel(Shader& shader)
 void drawRightSidePixel(Shader& shader)
 {
 	glViewport(SINGLE_SCREEN_WIDTH, 0, SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
-	bh.pbo_draw(shader);
+	bh.pbo_pack_draw(shader);
 	
 }
 void renderScene(Shader& shader)
 {	
-	if (pboUsed)
+	static int index = 0;				// 用于从PBO拷贝像素到纹理对象
+	int nextIndex = 0;                  // 指向下一个PBO 用于更新PBO中像素
+	glActiveTexture(GL_TEXTURE0);
+	if (pboMode > 0)
 	{
+		if (pboMode == 1)
+		{
+			// 只有一个时 使用0号PBO
+			index = nextIndex = 0;
+		}
+		else if (pboMode == 2)
+		{
+			index = (index + 1) % 2;
+			nextIndex = (index + 1) % 2;
+		}
+
+		// 开始PBO到texture object的数据复制 unpack操作
 		t1.start();
-		// 开始FBO到PBO复制操作 pack操作
-		bh.async_read_pixels();
-		
-		// 计算读取数据所需时间
+
+		// 绑定纹理和PBO
+		bh.async_copy_pixels_from_pbo_to_fbo(index);
+		// 计算复制数据所需时间
 		t1.stop();
-		readTime = t1.getElapsedTimeInMilliSec();
+		copyTime = t1.getElapsedTimeInMilliSec();
+
 
 		// 开始修改nextIndex指向的PBO的数据
 		t1.start();
-		bh.update_pbo_pixels(updatePixels);
-		// 计算更新PBO数据所需时间
+		bh.map_pbo_to_memery_and_update_pixels(updatePixels, nextIndex);
+		// 计算修改PBO数据所需时间
 		t1.stop();
-		processTime = t1.getElapsedTimeInMilliSec();
+		updateTime = t1.getElapsedTimeInMilliSec();
+
+		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 	}
 	else
 	{
-		// 不使用PBO的方式 读取到client memory并修改
+		// 不使用PBO的方式 从用户内存复制到texture object
 		t1.start();
-		bh.sync_read_pixels_and_update(updatePixels);
+		bh.sync_copy_pixels_from_memery_to_fbo(updatePixels);
 		t1.stop();
-		readTime = t1.getElapsedTimeInMilliSec();
+		copyTime = t1.getElapsedTimeInMilliSec();
 	}
-	glDrawBuffer(GL_BACK);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	drawLeftSidePixel(shader);
-	drawRightSidePixel(shader);
+	bh.pbo_unpack_draw(shader);
 }
 
 void renderInfo(Shader& shader)
@@ -291,20 +282,22 @@ void renderInfo(Shader& shader)
 
 	std::wstringstream ss;
 	ss << "PBO: ";
-	if (pboUsed)
-		ss << "on" << std::ends;
-	else
+	if (pboMode == 0)
 		ss << "off" << std::ends;
+	else if (pboMode == 1)
+		ss << "1 PBO" << std::ends;
+	else if (pboMode == 2)
+		ss << "2 PBOs" << std::ends;
 
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << std::fixed << std::setprecision(3);
-	ss << "Read Time: " << readTime << " ms" << std::ends;
+	ss << "Read Time: " << copyTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (2 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
-	ss << "Process Time: " << processTime << " ms" << std::ends;
+	ss << "Process Time: " << updateTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (3 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 

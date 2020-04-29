@@ -7,6 +7,7 @@
 bool keys[1024];		// 按键情况记录
 GLfloat mixValue = 0.4f;// 纹理混合参数
 bool pboUsed = false;	// PBO开关
+int pboMode = 0;
 
 // Window dimensions
 const GLuint WIDTH = 800;
@@ -55,6 +56,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
 	{
 		pboUsed = !pboUsed;
+		pboMode = (pboMode + 1) % 3;
 	}
 }
 
