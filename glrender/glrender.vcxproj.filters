@@ -26,9 +26,6 @@
     <ClInclude Include="common.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="glfwcallback.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="shader.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -69,6 +66,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="quad.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="pbo.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="glfwcallback.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

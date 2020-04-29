@@ -35,35 +35,30 @@
 // 视频辅助类
 #include "video.h"
 
+#include "pbo.h"
 
-GLuint PBOIds[2];
-void preparePBO();
+
+GLuint cubeTextId;
+void drawRightSidePixel(Shader& shader);
+void drawLeftSidePixel(Shader& shader);
 // 图片参数
-const int    IMAGE_WIDTH = WIDTH;
-const int    IMAGE_HEIGHT = HEIGHT;
-const int DATA_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 4;
+const int    SINGLE_SCREEN_WIDTH = WIDTH / 2;
+const int    SINGLE_SCREEN_HEIGHT = HEIGHT;
+const int	 DATA_SIZE = SINGLE_SCREEN_WIDTH * SINGLE_SCREEN_HEIGHT * 4; //*4是因为 GL_BGRA
 const int    TEXT_WIDTH = 8;
 const int    TEXT_HEIGHT = 30;
-const GLenum PIXEL_FORMAT = GL_RGBA;
-void updatePixels(GLubyte* dst, int size);
-GLubyte* imageData = 0; // 图片数据
-void initImageData();
-void releaseImageData();
+void updatePixels(unsigned char* src, int width, int height, unsigned char* dst);
 
-//视频渲染对象
-VideoObject videoObject;
-
-int pboMode = 2;
-Timer timer, t1, t2;
-float copyTime, updateTime;
-GLuint textureId;
-void initTexture();
+Timer timer, t1;
+float readTime, processTime;
 
 void renderInfo(Shader& shader);
+bool isFirstRendered = false;
+void renderInitScene(Shader& shader);
 void renderScene(Shader& shader);
-void printTransferRate();
-std::map<wchar_t, FontCharacter> unicodeCharacters;
 
+void printTransferRate();
+PboHelper bh(SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
 int main()
 {
 	// Init GLFW
@@ -106,7 +101,6 @@ int main()
 	// 鼠标捕获 停留在程序内
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-
 	// 初始化GLEW 获取OpenGL函数
 	glewExperimental = GL_TRUE;// 让glew获取所有拓展函数
 	GLenum status = glewInit();
@@ -124,28 +118,21 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Section1 准备顶点数据
-	FontHelper::getInstance().prepareTextVBO();	//准备渲染字体的顶点数据空间
-	QuadHelper::getInstance().prepareQuadVBO(); //准备渲染矩形面片的顶点数据
-	preparePBO();
-	initImageData();
-	initTexture();
-	std::srand(std::time(0));
+	QuadHelper::getInstance().prepareQuadVBO();//准备四方形面片顶点数据
+	FontHelper::getInstance().prepareTextVBO();//准备字体渲染顶点数据空间
+	bh.preparePBO();
+
 	// Section2 加载字体
 	FontHelper::getInstance().loadFont("arial", "resources/fonts/arial.ttf");
 	FontHelper::getInstance().loadASCIIChar("arial", 38);
 
-	// Section3 加载视频
-	const std::string fileName = "resources/videos/movie.wmv";
-	if (!videoObject.openVideo(fileName, IMAGE_WIDTH, IMAGE_HEIGHT))
-	{
-		std::cerr << " failed to open video file: " << fileName << std::endl;
-		char waitKey;
-		std::cin >> waitKey;
-		return -1;
-	}
-	// Section3 准备着色器程序
-	Shader shader("shader/videoRendering/videoRendering/scene.vertex", "shader/videoRendering/videoRendering/scene.frag");
-	Shader textShader("shader/videoRendering/videoRendering/text.vertex", "shader/videoRendering/videoRendering/text.frag");
+	// Section3 加载纹理
+	cubeTextId = TextureHelper::load2DTexture("resources/textures/wood.png");
+	bh.initPixelTexture();
+
+	// Section4 准备着色器程序
+	Shader shader("shader/PBO/PBO-pack/scene.vertex", "shader/PBO/PBO-pack/scene.frag");
+	Shader textShader("shader/PBO/PBO-pack/text.vertex", "shader/PBO/PBO-pack/text.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -157,15 +144,15 @@ int main()
 		GLfloat currentFrame = (GLfloat)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		glfwPollEvents(); // 处理例如鼠标 键盘等事件
-		do_movement(); // 根据用户操作情况 更新相机属性
+		glfwPollEvents();	// 处理例如鼠标 键盘等事件
+		do_movement();		// 根据用户操作情况 更新相机属性
 
 		// 清除颜色缓冲区 重置为指定颜色
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 1.0f, 100.0f); // 投影矩阵
-		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
+		glm::mat4 projection;
+		glm::mat4 view;
 		glm::mat4 model;
 		// 这里填写场景绘制代码
 		// 先绘制纹理图片
@@ -174,17 +161,24 @@ int main()
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		model = glm::mat4();
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		renderScene(shader);
-		// 在绘制信息文字
- 		textShader.use();
- 		projection = glm::ortho(0.0f, (GLfloat)(width), 0.0f, (GLfloat)height);
- 		view = glm::mat4();
+		if (!isFirstRendered)
+		{
+			renderInitScene(shader);
+			isFirstRendered = true;
+		}
+		else
+		{
+			renderScene(shader);
+		}
+		// 在右侧绘制信息文字 否则左侧文字会复制到右侧
+		textShader.use();
+		projection = glm::ortho(0.0f, (GLfloat)(SINGLE_SCREEN_WIDTH), 0.0f, (GLfloat)SINGLE_SCREEN_HEIGHT);
+		view = glm::mat4();
 		textShader.updateUniformMatrix4fv("projection",	1, GL_FALSE, glm::value_ptr(projection));
 		textShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
- 		model = glm::mat4();
+		model = glm::mat4();
 		textShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
- 		renderInfo(textShader);
-
+		renderInfo(textShader);
 		printTransferRate();
 
 		glBindVertexArray(0);
@@ -192,152 +186,103 @@ int main()
 		glfwSwapBuffers(window); // 交换缓存
 	}
 	// 释放资源
-	
-	
-	glDeleteBuffers(2, PBOIds);  // 注意释放PBO
-	releaseImageData();
-
 	glfwTerminate();
 	return 0;
 }
 
-// 准备PBO
-void preparePBO()
+// 改变像素的亮度
+void updatePixels(unsigned char* src, int width, int height, unsigned char* dst)
 {
-	glGenBuffers(2, PBOIds);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOIds[0]);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, DATA_SIZE, NULL, GL_STREAM_DRAW);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOIds[1]);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, DATA_SIZE, NULL, GL_STREAM_DRAW);
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-}
-
-// 写入视频到纹理中去
-void updatePixels(GLubyte* dst, int size)
-{
-	if (!dst)
+	if (!src || !dst)
 		return;
-	if (!videoObject.getNextFrame(dst, size))
+	static int shift = 0;
+	shift = ++shift % 200;
+
+	int value;
+	for (int i = 0; i < height; ++i)
 	{
-		std::cerr << "Error failed to get next frame" << std::endl;
+		for (int j = 0; j < width; ++j)
+		{
+			value = *src + shift;
+			if (value > 255) *dst = (unsigned char)255;
+			else            *dst = (unsigned char)value;
+			++src;
+			++dst;
+
+			value = *src + shift;
+			if (value > 255) *dst = (unsigned char)255;
+			else            *dst = (unsigned char)value;
+			++src;
+			++dst;
+
+			value = *src + shift;
+			if (value > 255) *dst = (unsigned char)255;
+			else            *dst = (unsigned char)value;
+			++src;
+			++dst;
+
+			++src;    // 跳过alpha
+			++dst;
+		}
 	}
 }
 
-
-void renderScene(Shader& shader)
+// 绘制一个初始场景 保证当FBO里使用glReadPixels时有内容
+void renderInitScene(Shader& shader)
 {
-	static int index = 0;				// 用于从PBO拷贝像素到纹理对象
-	int nextIndex = 0;                  // 指向下一个PBO 用于更新PBO中像素
+	// 绘制左边正方形
+	drawLeftSidePixel(shader);
+	// 绘制右边正方形
+	drawRightSidePixel(shader);
+}
+void drawLeftSidePixel(Shader& shader)
+{
+	glViewport(0, 0, SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
 	glActiveTexture(GL_TEXTURE0);
-	if (pboMode > 0)
+	glBindTexture(GL_TEXTURE_2D, cubeTextId);
+	glBindVertexArray(QuadHelper::getInstance().getVAO());
+	shader.updateUniform1i("cubeText", 0);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+void drawRightSidePixel(Shader& shader)
+{
+	glViewport(SINGLE_SCREEN_WIDTH, 0, SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
+	bh.pbo_draw(shader);
+	
+}
+void renderScene(Shader& shader)
+{	
+	if (pboUsed)
 	{
-		if (pboMode == 1)
-		{
-			// 只有一个时 使用0号PBO
-			index = nextIndex = 0;
-		}
-		else if (pboMode == 2)
-		{
-			index = (index + 1) % 2;
-			nextIndex = (index + 1) % 2;
-		}
-
-		// 开始PBO到texture object的数据复制 unpack操作
 		t1.start();
-
-		// 绑定纹理 和PBO
-		glBindTexture(GL_TEXTURE_2D, textureId);
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOIds[index]);
-
-		// 从PBO复制到texture object 使用偏移量 而不是指针
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, PIXEL_FORMAT, GL_UNSIGNED_BYTE, 0);
-
-		// 计算复制数据所需时间
+		// 开始FBO到PBO复制操作 pack操作
+		bh.async_read_pixels();
+		
+		// 计算读取数据所需时间
 		t1.stop();
-		copyTime = t1.getElapsedTimeInMilliSec();
-
+		readTime = t1.getElapsedTimeInMilliSec();
 
 		// 开始修改nextIndex指向的PBO的数据
 		t1.start();
-
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOIds[nextIndex]);
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, DATA_SIZE, 0, GL_STREAM_DRAW);
-		// 从PBO映射到用户内存空间 然后修改PBO中数据
-		GLubyte* ptr = (GLubyte*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-		if (ptr)
-		{
-			// 更新映射后的内存数据
-			updatePixels(ptr, DATA_SIZE);
-			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER); // 释放映射的用户内存空间
-		}
-
-		// 计算修改PBO数据所需时间
+		bh.update_pbo_pixels(updatePixels);
+		// 计算更新PBO数据所需时间
 		t1.stop();
-		updateTime = t1.getElapsedTimeInMilliSec();
-
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+		processTime = t1.getElapsedTimeInMilliSec();
 	}
 	else
 	{
-		// 不使用PBO的方式 从用户内存复制到texture object
+		// 不使用PBO的方式 读取到client memory并修改
 		t1.start();
-
-		glBindTexture(GL_TEXTURE_2D, textureId);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT, PIXEL_FORMAT, GL_UNSIGNED_BYTE, (GLvoid*)imageData);
-
+		bh.sync_read_pixels_and_update(updatePixels);
 		t1.stop();
-		copyTime = t1.getElapsedTimeInMilliSec();
-
-		// 修改内存数据
-		t1.start();
-		updatePixels(imageData, DATA_SIZE);
-		t1.stop();
-		updateTime = t1.getElapsedTimeInMilliSec();
+		readTime = t1.getElapsedTimeInMilliSec();
 	}
-	shader.updateUniform1i("randomText", 0);
-
-	// 绘制多个矩形显示纹理
-	glBindVertexArray(QuadHelper::getInstance().getVAO());
-	glm::vec2  positions[] = {
-		glm::vec2(-8, 8),
-		glm::vec2(0.0, 8),
-		glm::vec2(8, 8),
-
-		glm::vec2(-8, 2),
-		glm::vec2(0.0, 2),
-		glm::vec2(8, 2),
-
-		glm::vec2(-8, 0.0f),
-		glm::vec2(0.0, 0.0f),
-		glm::vec2(8, 0.0f),
-
-		glm::vec2(-8, -2),
-		glm::vec2(0.0, -2),
-		glm::vec2(8, -2),
-
-		glm::vec2(-8, -8),
-		glm::vec2(0.0, -8),
-		glm::vec2(8, -8),
-	};
-	const double FAR_Z_POS = -30.0f;
-	static double zPos[15] = { FAR_Z_POS, FAR_Z_POS, FAR_Z_POS,
-		FAR_Z_POS, FAR_Z_POS, FAR_Z_POS ,
-		FAR_Z_POS, FAR_Z_POS, FAR_Z_POS };
-	for (size_t i = 0; i < sizeof(positions) / sizeof(positions[0]); ++i)
-	{
-		glm::mat4 model = glm::mat4();
-		zPos[i] += (std::rand() % 10) * 0.1f;
-		if (zPos[i] - 0.1f >= 0.0001f)
-		{
-			zPos[i] = FAR_Z_POS;
-		}
-		glm::vec3 pos = glm::vec3(positions[i].x, positions[i].y, zPos[i]);
-		model = glm::translate(model, pos);
-		model = glm::scale(model, glm::vec3(1.4));
-		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	}
-	glBindVertexArray(0);
+	glDrawBuffer(GL_BACK);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	drawLeftSidePixel(shader);
+	drawRightSidePixel(shader);
 }
 
 void renderInfo(Shader& shader)
@@ -346,30 +291,28 @@ void renderInfo(Shader& shader)
 
 	std::wstringstream ss;
 	ss << "PBO: ";
-	if (pboMode == 0)
+	if (pboUsed)
+		ss << "on" << std::ends;
+	else
 		ss << "off" << std::ends;
-	else if (pboMode == 1)
-		ss << "1 PBO" << std::ends;
-	else if (pboMode == 2)
-		ss << "2 PBOs" << std::ends;
-	FontHelper::getInstance().renderText(shader, ss.str(), 1, WIDTH - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << std::fixed << std::setprecision(3);
-	ss << "Updating Time: " << updateTime << " ms" << std::ends;
+	ss << "Read Time: " << readTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (2 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
-	ss << "Copying Time: " << copyTime << " ms" << std::ends;
+	ss << "Process Time: " << processTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (3 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << "Press SPACE key to toggle PBO on/off." << std::ends;
-	FontHelper::getInstance().renderText(shader, ss.str(), 1, 1, 0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
+	FontHelper::getInstance().renderText(shader, ss.str(), 1, 1, 0.6f, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	ss << std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
 }
-
 void printTransferRate()
 {
 	const double INV_MEGA = 1.0 / (1024 * 1024);
@@ -392,27 +335,4 @@ void printTransferRate()
 		count = 0;                      // 重置计数器
 		timer.start();                  // 重新开始计时器
 	}
-}
-
-void initImageData()
-{
-	imageData = new GLubyte[DATA_SIZE];
-	memset(imageData, 0, DATA_SIZE);
-}
-
-void initTexture()
-{
-	glGenTextures(1, &textureId);
-	glBindTexture(GL_TEXTURE_2D, textureId);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, IMAGE_WIDTH, IMAGE_HEIGHT, 0, PIXEL_FORMAT, GL_UNSIGNED_BYTE, (GLvoid*)imageData);
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void releaseImageData()
-{
-	delete[] imageData;
 }

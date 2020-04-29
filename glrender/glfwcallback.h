@@ -6,17 +6,17 @@
 
 bool keys[1024];		// 按键情况记录
 GLfloat mixValue = 0.4f;// 纹理混合参数
+bool pboUsed = false;	// PBO开关
 
 // Window dimensions
-const GLuint WIDTH = 960;
-const GLuint HEIGHT = 540;
+const GLuint WIDTH = 800;
+const GLuint HEIGHT = 600;
 
 // 用于相机交互参数
 GLfloat lastX = WIDTH / 2.0f, lastY = HEIGHT / 2.0f;
 bool firstMouseMove = true;
 GLfloat deltaTime = 0.0f; // 当前帧和上一帧的时间差
 GLfloat lastFrame = 0.0f; // 上一帧时间
-
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 glm::vec3 lampPos(1.2f, 1.0f, 2.0f);
@@ -31,7 +31,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	// 当用户按下ESC键,我们设置window窗口的WindowShouldClose属性为true
 	// 关闭应用程序
-	std::cout << key << std::endl;
+	// std::cout << key << std::endl;
 	if (key >= 0 && key < 1024)
 	{
 		if (action == GLFW_PRESS)
@@ -51,6 +51,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	else if (key == GLFW_KEY_F && action == GLFW_PRESS)
 	{
 		glDisable(GL_MULTISAMPLE);
+	}
+	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		pboUsed = !pboUsed;
 	}
 }
 

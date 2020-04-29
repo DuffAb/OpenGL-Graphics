@@ -70,6 +70,7 @@ public:
 		glEnableVertexAttribArray(0);
 		// xy 表示位置 zw表示纹理坐标
 		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+		glBindVertexArray(0);
 	}
 
 	void renderText(Shader& shader, std::wstring text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
@@ -133,6 +134,7 @@ public:
 		_faceMap[fontName] = face;
 		FT_Select_Charmap(face, FT_ENCODING_UNICODE); // unicode编码
 	}
+
 	bool loadASCIIChar(const std::string& fontName, const int fontSize)
 	{
 		// 因为我们使用1个字节的颜色分量来存储纹理 所以解除默认的4字节对齐限制
@@ -188,6 +190,65 @@ public:
 		glBindTexture(GL_TEXTURE_2D, 0);
 		return true;
 	}
+
+	bool loadASCIIChar(const std::string& fontName, const int fontSize,
+		std::map<wchar_t, FontCharacter>& characters)
+	{
+		// 因为我们使用1个字节的颜色分量来存储纹理 所以解除默认的4字节对齐限制
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		FT_Face face = getFontFace(fontName);
+		if (NULL == face)
+		{
+			std::cerr << "ERROR::FontResourceManager: Failed to get font with name="
+				<< fontName << std::endl;
+			return false;
+		}
+		FT_Set_Pixel_Sizes(face, 0, fontSize);
+		for (GLubyte c = 0; c < 255; c++)
+		{
+			if (!isprint(c))
+			{
+				continue;
+			}
+			// 加载字符的字形 
+			// FT_LOAD_RENDER  选项告知freeType创建一个 8-bit grayscale bitmap image
+			if (FT_Load_Char(face, c, FT_LOAD_RENDER))
+			{
+				std::cerr << "ERROR::FontResourceManager: Failed to load Glyph with char=" << c << std::endl;
+				continue;
+			}
+			// 为字体对应的字形创建一个纹理 保存以备后续处理
+			GLuint texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0,
+				GL_RED,
+				face->glyph->bitmap.width,
+				face->glyph->bitmap.rows,
+				0,
+				GL_RED,
+				GL_UNSIGNED_BYTE,
+				face->glyph->bitmap.buffer
+			);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			FontCharacter character = {
+				texture,
+				glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+				glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+				face->glyph->advance.x
+			};
+			characters.insert(std::pair<GLchar, FontCharacter>(c, character));
+		}
+		glBindTexture(GL_TEXTURE_2D, 0);
+		return true;
+	}
+
 	bool loadUnicodeText(const std::string& fontName, const int fontSize, const std::wstring& text)
 	{
 		// 因为我们使用1个字节的颜色分量来存储纹理 所以解除默认的4字节对齐限制
