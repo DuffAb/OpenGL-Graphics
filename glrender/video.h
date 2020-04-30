@@ -44,6 +44,10 @@ public:
 		cv::resize(frame, frame, cv::Size(_width, _height), 0, 0, cv::INTER_CUBIC);
 		cv::cvtColor(frame, frame, CV_BGR2RGBA);
 		std::memcpy(buffer, frame.data, size);
+		if (cv::waitKey(50) >= 0) {
+			return false;
+		}
+
 		return true;
 	}
 private:

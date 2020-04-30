@@ -256,7 +256,7 @@ void renderScene(Shader& shader)
 
 	// 绘制多个矩形显示纹理
 	glBindVertexArray(QuadHelper::getInstance().getVAO());
-	glm::vec2  positions[] = {
+	/*glm::vec2  positions[] = {
 		glm::vec2(-8, 8),
 		glm::vec2(0.0, 8),
 		glm::vec2(8, 8),
@@ -294,7 +294,10 @@ void renderScene(Shader& shader)
 		model = glm::scale(model, glm::vec3(1.4));
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	}
+	}*/
+	glm::mat4 model = glm::mat4();
+	shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
 
@@ -311,7 +314,7 @@ void renderInfo(Shader& shader)
 	else if (pboMode == 2)
 		ss << "2 PBOs" << std::ends;
 		
-	FontHelper::getInstance().renderText(shader, ss.str(), 1, WIDTH - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
+	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << std::fixed << std::setprecision(3);
