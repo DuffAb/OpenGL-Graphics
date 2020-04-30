@@ -37,27 +37,27 @@
 
 #include "pbo.h"
 
-
-GLuint cubeTextId;
-void drawRightSidePixel(Shader& shader);
-void drawLeftSidePixel(Shader& shader);
 // 图片参数
-const int    SINGLE_SCREEN_WIDTH = WIDTH / 2;
-const int    SINGLE_SCREEN_HEIGHT = HEIGHT;
-const int	 DATA_SIZE = SINGLE_SCREEN_WIDTH * SINGLE_SCREEN_HEIGHT * 4; //*4是因为 GL_BGRA
+const int    IMAGE_WIDTH = WIDTH;
+const int    IMAGE_HEIGHT = HEIGHT;
+const int DATA_SIZE = IMAGE_WIDTH * IMAGE_HEIGHT * 4;
 const int    TEXT_WIDTH = 8;
 const int    TEXT_HEIGHT = 30;
+const GLenum PIXEL_FORMAT = GL_RGBA;
 void updatePixels(unsigned char* src, int width, int height, unsigned char* dst);
 
-Timer timer, t1;
+//视频渲染对象
+VideoObject videoObject;
+
+Timer timer, t1, t2;
 float copyTime, updateTime;
 
 void renderInfo(Shader& shader);
-void renderInitScene(Shader& shader);
 void renderScene(Shader& shader);
-
 void printTransferRate();
-PboHelper bh(SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
+
+PboHelper ph(IMAGE_WIDTH, IMAGE_HEIGHT);
+
 int main()
 {
 	// Init GLFW
@@ -86,7 +86,7 @@ int main()
 	glfwSetWindowPos(window, 300, 100);
 	// 创建的窗口的context指定为当前context
 	glfwMakeContextCurrent(window);
-	
+
 	Event event(window);
 	// 注册窗口键盘事件回调函数
 	event.setEvent(glfwKey);
@@ -96,9 +96,10 @@ int main()
 	event.setEvent(glfwScroll);
 	// 注册窗口大小事件回调函数
 	event.setEvent(glfwFramebufferSize);
-	
+
 	// 鼠标捕获 停留在程序内
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 
 	// 初始化GLEW 获取OpenGL函数
 	glewExperimental = GL_TRUE;// 让glew获取所有拓展函数
@@ -117,20 +118,29 @@ int main()
 	glViewport(0, 0, width, height);
 
 	// Section1 准备顶点数据
-	QuadHelper::getInstance().prepareQuadVBO();//准备四方形面片顶点数据
-	FontHelper::getInstance().prepareTextVBO();//准备字体渲染顶点数据空间
-	bh.prepare_unpack_pbo();
+	FontHelper::getInstance().prepareTextVBO();	//准备渲染字体的顶点数据空间
+	QuadHelper::getInstance().prepareQuadVBO(); //准备渲染矩形面片的顶点数据
+	ph.prepare_unpack_pbo();
+	ph.init_pixel_texture();
 
+	std::srand(std::time(0));
 	// Section2 加载字体
 	FontHelper::getInstance().loadFont("arial", "resources/fonts/arial.ttf");
 	FontHelper::getInstance().loadASCIIChar("arial", 38);
 
-	// Section3 加载纹理
-	bh.init_pixel_texture();
+	// Section3 加载视频
+	const std::string fileName = "resources/videos/movie.wmv";
+	if (!videoObject.openVideo(fileName, IMAGE_WIDTH, IMAGE_HEIGHT))
+	{
+		std::cerr << " failed to open video file: " << fileName << std::endl;
+		char waitKey;
+		std::cin >> waitKey;
+		return -1;
+	}
 
 	// Section4 准备着色器程序
-	Shader shader("shader/PBO/PBO-unpack/scene.vertex", "shader/PBO/PBO-unpack/scene.frag");
-	Shader textShader("shader/PBO/PBO-unpack/text.vertex", "shader/PBO/PBO-unpack/text.frag");
+	Shader shader("shader/videoRendering/videoRendering/scene.vertex", "shader/videoRendering/videoRendering/scene.frag");
+	Shader textShader("shader/videoRendering/videoRendering/text.vertex", "shader/videoRendering/videoRendering/text.frag");
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -149,87 +159,54 @@ int main()
 		glClearColor(0.18f, 0.04f, 0.14f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 projection;
-		glm::mat4 view;
+		glm::mat4 projection = glm::perspective(camera.mouse_zoom, (GLfloat)(width) / height, 1.0f, 100.0f); // 投影矩阵
+		glm::mat4 view = camera.getViewMatrix(); // 视变换矩阵
 		glm::mat4 model;
 		// 这里填写场景绘制代码
 		// 先绘制纹理图片
 		shader.use();
-		shader.updateUniformMatrix4fv("projection",	1, GL_FALSE, glm::value_ptr(projection));
+		shader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		shader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		model = glm::mat4();
 		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		renderScene(shader);
-
-		// 在右侧绘制信息文字 否则左侧文字会复制到右侧
+		// 在绘制信息文字
 		textShader.use();
-		projection = glm::ortho(0.0f, (GLfloat)(SINGLE_SCREEN_WIDTH), 0.0f, (GLfloat)SINGLE_SCREEN_HEIGHT);
+		projection = glm::ortho(0.0f, (GLfloat)(width), 0.0f, (GLfloat)height);
 		view = glm::mat4();
-		textShader.updateUniformMatrix4fv("projection",	1, GL_FALSE, glm::value_ptr(projection));
+		textShader.updateUniformMatrix4fv("projection", 1, GL_FALSE, glm::value_ptr(projection));
 		textShader.updateUniformMatrix4fv("view", 1, GL_FALSE, glm::value_ptr(view));
 		model = glm::mat4();
 		textShader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
 		renderInfo(textShader);
+
 		printTransferRate();
 
 		glBindVertexArray(0);
 		glUseProgram(0);
 		glfwSwapBuffers(window); // 交换缓存
 	}
+
 	// 释放资源
 	glfwTerminate();
 	return 0;
 }
 
-// 改变像素的亮度
+
+// 写入视频到纹理中去
 void updatePixels(unsigned char* src, int width, int height, unsigned char* dst)
 {
-	static int color = 0;
-
 	if (!src)
 		return;
-
-	int* ptr = (int*)src;  // 每次处理4个字节
-
-	for (int i = 0; i < width; ++i)
+	if (!videoObject.getNextFrame(src, DATA_SIZE))
 	{
-		for (int j = 0; j < height; ++j)
-		{
-			*ptr = color;
-			++ptr;
-		}
-		color += 257;   // 加入随机量 这个值无意义
+		std::cerr << "Error failed to get next frame" << std::endl;
 	}
-	++color;
 }
 
-// 绘制一个初始场景 保证当FBO里使用glReadPixels时有内容
-void renderInitScene(Shader& shader)
-{
-	// 绘制左边正方形
-	drawLeftSidePixel(shader);
-	// 绘制右边正方形
-	drawRightSidePixel(shader);
-}
-void drawLeftSidePixel(Shader& shader)
-{
-	glViewport(0, 0, SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, cubeTextId);
-	glBindVertexArray(QuadHelper::getInstance().getVAO());
-	shader.updateUniform1i("cubeText", 0);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	glBindVertexArray(0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-void drawRightSidePixel(Shader& shader)
-{
-	glViewport(SINGLE_SCREEN_WIDTH, 0, SINGLE_SCREEN_WIDTH, SINGLE_SCREEN_HEIGHT);
-	bh.pbo_pack_draw(shader);
-	
-}
+
 void renderScene(Shader& shader)
-{	
+{
 	static int index = 0;				// 用于从PBO拷贝像素到纹理对象
 	int nextIndex = 0;                  // 指向下一个PBO 用于更新PBO中像素
 	glActiveTexture(GL_TEXTURE0);
@@ -249,8 +226,8 @@ void renderScene(Shader& shader)
 		// 开始PBO到texture object的数据复制 unpack操作
 		t1.start();
 
-		// 绑定纹理和PBO
-		bh.async_copy_pixels_from_pbo_to_fbo(index);
+		// 绑定纹理 和PBO
+		ph.async_copy_pixels_from_pbo_to_fbo(index);
 		// 计算复制数据所需时间
 		t1.stop();
 		copyTime = t1.getElapsedTimeInMilliSec();
@@ -258,7 +235,8 @@ void renderScene(Shader& shader)
 
 		// 开始修改nextIndex指向的PBO的数据
 		t1.start();
-		bh.map_pbo_to_memery_and_update_pixels(updatePixels, nextIndex);
+		ph.map_pbo_to_memery_and_update_pixels(updatePixels, nextIndex);
+
 		// 计算修改PBO数据所需时间
 		t1.stop();
 		updateTime = t1.getElapsedTimeInMilliSec();
@@ -269,11 +247,55 @@ void renderScene(Shader& shader)
 	{
 		// 不使用PBO的方式 从用户内存复制到texture object
 		t1.start();
-		bh.sync_copy_pixels_from_memery_to_fbo(updatePixels);
+		ph.sync_copy_pixels_from_memery_to_fbo(updatePixels);
+
 		t1.stop();
 		copyTime = t1.getElapsedTimeInMilliSec();
 	}
-	bh.pbo_unpack_draw(shader);
+	shader.updateUniform1i("randomText", 0);
+
+	// 绘制多个矩形显示纹理
+	glBindVertexArray(QuadHelper::getInstance().getVAO());
+	glm::vec2  positions[] = {
+		glm::vec2(-8, 8),
+		glm::vec2(0.0, 8),
+		glm::vec2(8, 8),
+
+		glm::vec2(-8, 2),
+		glm::vec2(0.0, 2),
+		glm::vec2(8, 2),
+
+		glm::vec2(-8, 0.0f),
+		glm::vec2(0.0, 0.0f),
+		glm::vec2(8, 0.0f),
+
+		glm::vec2(-8, -2),
+		glm::vec2(0.0, -2),
+		glm::vec2(8, -2),
+
+		glm::vec2(-8, -8),
+		glm::vec2(0.0, -8),
+		glm::vec2(8, -8),
+	};
+	const double FAR_Z_POS = -30.0f;
+	static double zPos[15] = { FAR_Z_POS, FAR_Z_POS, FAR_Z_POS,
+		FAR_Z_POS, FAR_Z_POS, FAR_Z_POS ,
+		FAR_Z_POS, FAR_Z_POS, FAR_Z_POS };
+	for (size_t i = 0; i < sizeof(positions) / sizeof(positions[0]); ++i)
+	{
+		glm::mat4 model = glm::mat4();
+		zPos[i] += (std::rand() % 10) * 0.1f;
+		if (zPos[i] - 0.1f >= 0.0001f)
+		{
+			zPos[i] = FAR_Z_POS;
+		}
+		glm::vec3 pos = glm::vec3(positions[i].x, positions[i].y, zPos[i]);
+		model = glm::translate(model, pos);
+		model = glm::scale(model, glm::vec3(1.4));
+		shader.updateUniformMatrix4fv("model", 1, GL_FALSE, glm::value_ptr(model));
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
+	glBindVertexArray(0);
 }
 
 void renderInfo(Shader& shader)
@@ -288,24 +310,25 @@ void renderInfo(Shader& shader)
 		ss << "1 PBO" << std::ends;
 	else if (pboMode == 2)
 		ss << "2 PBOs" << std::ends;
-
-	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
+		
+	FontHelper::getInstance().renderText(shader, ss.str(), 1, WIDTH - TEXT_HEIGHT, 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << std::fixed << std::setprecision(3);
-	ss << "Read Time: " << copyTime << " ms" << std::ends;
+	ss << "Updating Time: " << updateTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (2 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
-	ss << "Process Time: " << updateTime << " ms" << std::ends;
+	ss << "Copying Time: " << copyTime << " ms" << std::ends;
 	FontHelper::getInstance().renderText(shader, ss.str(), 1, HEIGHT - (3 * TEXT_HEIGHT), 0.4f, glm::vec3(0.0f, 0.0f, 1.0f));
 	ss.str(L"");
 
 	ss << "Press SPACE key to toggle PBO on/off." << std::ends;
-	FontHelper::getInstance().renderText(shader, ss.str(), 1, 1, 0.6f, glm::vec3(0.0f, 0.0f, 1.0f));
+	FontHelper::getInstance().renderText(shader, ss.str(), 1, 1, 0.8f, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	ss << std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
 }
+
 void printTransferRate()
 {
 	const double INV_MEGA = 1.0 / (1024 * 1024);
@@ -329,3 +352,4 @@ void printTransferRate()
 		timer.start();                  // 重新开始计时器
 	}
 }
+

@@ -111,6 +111,7 @@ public:
 	{
 		glReadBuffer(GL_FRONT); // 设置读取的FBO
 		glReadPixels(0, 0, width, height, pixel_format, GL_UNSIGNED_BYTE, buf_pbo_2_memery);
+		// 修改内存数据
 		fn(buf_pbo_2_memery, width, height, buf_pbo_2_memery);
 		
 		return;
@@ -165,6 +166,7 @@ public:
 	{
 		glBindTexture(GL_TEXTURE_2D, pixelTextId);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,	width, height, pixel_format, GL_UNSIGNED_BYTE, (GLvoid*)buf_pbo_2_memery);
+		// 修改内存数据
 		fn(buf_pbo_2_memery, width, height, nullptr);
 	}
 
